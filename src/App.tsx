@@ -10,8 +10,7 @@ import {
   FontWeights, 
   Separator,
   MessageBar,
-  MessageBarType,
-  Checkbox
+  MessageBarType
 } from '@fluentui/react';
 import { convertSelection, convertDocument } from './converter';
 import './App.css';
@@ -60,9 +59,6 @@ const stackSpacing = { childrenGap: 15 };
 
 function App() {
   const [useSmartIgnore, setUseSmartIgnore] = useState(true);
-  const [includeHF, setIncludeHF] = useState(true);
-  const [dynamicLists, setDynamicLists] = useState(true);
-  const [dynamicPageNumbers, setDynamicPageNumbers] = useState(true);
   const [status, setStatus] = useState<{message: string, type: MessageBarType} | null>(null);
 
   const handleConvertSelection = async () => {
@@ -79,7 +75,7 @@ function App() {
   const handleConvertDocument = async () => {
     try {
       setStatus(null);
-      await convertDocument(useSmartIgnore, includeHF, dynamicLists, dynamicPageNumbers);
+      await convertDocument(useSmartIgnore);
       setStatus({ message: "แปลงทั้งเอกสารเรียบร้อย!", type: MessageBarType.success });
     } catch (error: any) {
       console.error(error);
@@ -94,12 +90,12 @@ function App() {
           <Text styles={logoStyle}>IT๙</Text>
           <Stack>
             <Text variant="xxLarge" styles={boldStyle}>IT๙ Converter</Text>
-            <Text variant="small" styles={{ root: { color: '#605e5c', marginTop: '-5px' } }}>v1.12.0</Text>
+            <Text variant="small" styles={{ root: { color: '#605e5c', marginTop: '-5px' } }}>v1.15.0</Text>
           </Stack>
         </Stack>
         
         <Text variant="medium">
-          เครื่องมือแปลงเลขไทยระดับมืออาชีพ พร้อมระบบข้ามคำภาษาอังกฤษและ URL อัตโนมัติ
+          เครื่องมือแปลงเลขไทยระดับมืออาชีพ พร้อมระบบข้ามคำภาษาอังกฤษและ URL อัตโนมัติ (แปลงครอบคลุมทั้งหัวกระดาษ ท้ายกระดาษ กล่องข้อความ เลขหน้า และลำดับอัตโนมัติ)
         </Text>
 
         <Separator />
@@ -117,27 +113,6 @@ function App() {
         <Text variant="small" styles={{ root: { color: '#666', marginTop: '-15px', marginLeft: '25px' } }}>
           ข้ามเลขในคำอังกฤษ เช่น spin9, 9arm, www.site123.com
         </Text>
-
-        <Checkbox 
-          label="เปลี่ยนในส่วนหัว/ท้ายกระดาษ (Headers/Footers)" 
-          checked={includeHF} 
-          onChange={(_, checked) => setIncludeHF(!!checked)} 
-        />
-
-        <Checkbox 
-          label="แปลงเลขลำดับอัตโนมัติ (Dynamic Thai Lists ๑.๑)" 
-          checked={dynamicLists} 
-          onChange={(_, checked) => setDynamicLists(!!checked)} 
-        />
-        <Text variant="small" styles={{ root: { color: '#666', marginTop: '-10px', marginLeft: '25px' } }}>
-          เปลี่ยนเลข 1.1 {'->'} ๑.๑ แบบอัตโนมัติ (ไม่เสียฟอร์แมต)
-        </Text>
-
-        <Checkbox 
-          label="แปลงเลขหน้า และสารบัญ (Page Numbers & TOC)" 
-          checked={dynamicPageNumbers} 
-          onChange={(_, checked) => setDynamicPageNumbers(!!checked)} 
-        />
 
         <Separator />
 
