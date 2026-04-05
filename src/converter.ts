@@ -21,6 +21,7 @@ export function convertText(text: string, useSmartIgnore: boolean): string {
   let processedText = text;
   
   if (useSmartIgnore) {
+    // 1. Process Dates (e.g., "5 May 2024" -> "5 พฤษภาคม 2567")
     const dateRegex = /\b(\d{1,2})?\s?(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s?(\d{1,2})?,?\s(20\d{2})\b/gi;
     
     processedText = processedText.replace(dateRegex, (match, d1, month, d2, year) => {
@@ -35,6 +36,7 @@ export function convertText(text: string, useSmartIgnore: boolean): string {
       return `${day} ${thaiMonth} ${beYear}`.trim();
     });
 
+    // 2. Smart Numeral Conversion
     const smartRegex = /(?<![a-zA-Z0-9])[0-9]+(?![a-zA-Z0-9])/g;
     return processedText.replace(smartRegex, (match: string) => {
       return match.split('').map((char: string) => ARABIC_TO_THAI_MAP[char] || char).join('');
@@ -46,32 +48,16 @@ export function convertText(text: string, useSmartIgnore: boolean): string {
 
 /**
  * Core logic to process a range. 
- * Updated to PROTECT fields (like page numbers) from being flattened.
  */
 async function processRange(range: Word.Range, useSmartIgnore: boolean, context: Word.RequestContext) {
   try {
-    range.load("text");
+    range.load("text,parentBody/type");
     await context.sync();
     
     const originalFullText = range.text;
     if (!originalFullText) return;
 
-    // Check if this range is inside a Field (e.g., Page Number)
-    // We try to get the parent field. If it exists, we skip text replacement to avoid "๑" bug.
-    try {
-        const parentField = range.parentBody.fields.getCount(); // Shallow check
-        // If we are in a header/footer, we are much more careful.
-        const parentBody = range.parentBody;
-        parentBody.load("type");
-        await context.sync();
-        
-        if (parentBody.type === "Header" || parentBody.type === "Footer") {
-            // In headers/footers, we ONLY convert text that is NOT a field.
-            // This is complex in Office.js, so we'll use a safer approach:
-            // We search for numbers, but we skip them if they look like standalone page numbers.
-        }
-    } catch (e) {}
-
+    // Dates logic
     const dateConvertedText = convertText(originalFullText, useSmartIgnore);
     if (originalFullText !== dateConvertedText) {
         range.insertText(dateConvertedText, "Replace");
@@ -90,9 +76,9 @@ async function processRange(range: Word.Range, useSmartIgnore: boolean, context:
 
       const text = blockRange.text;
       
-      // SAFETY: If the text is just a single digit and we are in a Header/Footer, 
-      // it is likely a page number. SKIP IT to let dynamic numbering handle it.
-      if ((text.length === 1 || text.length === 2) && (range as any).parentBody?.type === "Header") continue;
+      // Page number protection in headers/footers
+      if ((text.length === 1 || text.length === 2) && 
+          (range.parentBody.type === "Header" || range.parentBody.type === "Footer")) continue;
 
       if (useSmartIgnore) {
         if (/^[0-9]+$/.test(text)) {
@@ -143,7 +129,7 @@ export async function convertDocument(useSmartIgnore: boolean, includeHF: boolea
     // 1. Process Main Body
     await processBodyExhaustive(context.document.body, useSmartIgnore, context);
 
-    // 2. Handle Dynamic Lists (๑.๑) - Safer Implementation
+    // 2. Handle Dynamic Lists (๑.๑)
     if (dynamicLists) {
       const paragraphs = context.document.body.paragraphs;
       paragraphs.load("items/isListItem,items/list");
@@ -153,16 +139,14 @@ export async function convertDocument(useSmartIgnore: boolean, includeHF: boolea
         const para = paragraphs.items[i];
         if (para.isListItem && para.list) {
           try {
-            const listLevels = (para.list as any).listTemplate.listLevels;
+            const listAny = para.list as any;
+            const listLevels = listAny.listTemplate.listLevels;
             listLevels.load("items");
             await context.sync();
             for (let j = 0; j < listLevels.items.length; j++) {
               listLevels.items[j].numberStyle = "ThaiArabic";
             }
-          } catch (e) {
-             // Fallback: try setting numbering style directly if template fails
-             try { (para.list as any).setLevelNumbering(0, "ThaiArabic" as any); } catch(err) {}
-          }
+          } catch (e) {}
         }
       }
     }
@@ -177,16 +161,14 @@ export async function convertDocument(useSmartIgnore: boolean, includeHF: boolea
       
       if (dynamicPageNumbers) {
         try {
-            // Apply Thai numbering to the section's page counter
             (section as any).pageNumbering.numberStyle = "ThaiArabic";
-            // Also target fields specifically for TOC and Page numbers
-            const body = section.body;
-            const fields = body.fields;
+            const fields = section.body.fields;
             fields.load("items/type");
             await context.sync();
             for (let j = 0; j < fields.items.length; j++) {
-                if (fields.items[j].type === "Page" || fields.items[j].type === "Toc") {
-                    // This forces Word to re-evaluate the field with the new section style
+                const fType = fields.items[j].type;
+                // Using case-insensitive check or any to bypass rigid enum mismatches
+                if (fType.toString().toLowerCase() === "page" || fType.toString().toLowerCase() === "toc") {
                     (fields.items[j] as any).update(); 
                 }
             }
@@ -203,7 +185,6 @@ export async function convertDocument(useSmartIgnore: boolean, includeHF: boolea
           try {
             const header = section.getHeader(type);
             const footer = section.getFooter(type);
-            // Process text in headers/footers but the processRange now has a safety check
             await processBodyExhaustive(header, useSmartIgnore, context);
             await processBodyExhaustive(footer, useSmartIgnore, context);
           } catch (e) {}
