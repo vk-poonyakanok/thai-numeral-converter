@@ -18,17 +18,13 @@ const MONTHS_MAP: { [key: string]: string } = {
  * Converts Arabic numerals to Thai numerals in a string.
  */
 export function convertText(text: string, useSmartIgnore: boolean): string {
-  // Bonus: Auto-convert AD Year to BE Year if it looks like a year (2000-2100)
-  // and is not preceded by "ค.ศ."
   let processedText = text;
   
   if (useSmartIgnore) {
     // 1. Process Dates (e.g., "5 May 2024" -> "5 พฤษภาคม 2567")
-    // Regex for Month Day, Year or Day Month Year
     const dateRegex = /\b(\d{1,2})?\s?(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s?(\d{1,2})?,?\s(20\d{2})\b/gi;
     
     processedText = processedText.replace(dateRegex, (match, d1, month, d2, year) => {
-      // Check if "ค.ศ." is before the match (simple check)
       const index = processedText.indexOf(match);
       const before = processedText.substring(Math.max(0, index - 10), index);
       if (before.includes("ค.ศ.")) return match;
@@ -55,9 +51,6 @@ export function convertText(text: string, useSmartIgnore: boolean): string {
  */
 async function processRange(range: Word.Range, useSmartIgnore: boolean, context: Word.RequestContext) {
   try {
-    // First, do a pass for the Date Formatter logic on the whole range text
-    // This is a bit destructive to formatting if we replace the whole range, 
-    // so we only do it if we find a date match.
     range.load("text");
     await context.sync();
     
@@ -65,14 +58,10 @@ async function processRange(range: Word.Range, useSmartIgnore: boolean, context:
     const dateConvertedText = convertText(originalFullText, useSmartIgnore);
     
     if (originalFullText !== dateConvertedText) {
-        // If dates were found and converted, we have to replace the text.
-        // To preserve formatting, we'd need a more complex range-by-range search.
-        // For now, we update the text.
         range.insertText(dateConvertedText, "Replace");
         return;
     }
 
-    // Standard numeral-by-numeral replacement (Best for formatting)
     const searchPattern = useSmartIgnore ? "[a-zA-Z0-9]{1,}" : "[0-9]{1,}";
     const results = range.search(searchPattern, { matchWildcards: true });
     results.load("items");
@@ -94,9 +83,7 @@ async function processRange(range: Word.Range, useSmartIgnore: boolean, context:
         blockRange.insertText(thaiText, "Replace");
       }
     }
-  } catch (e) {
-    // Ignore inaccessible ranges
-  }
+  } catch (e) {}
 }
 
 /**
@@ -107,21 +94,22 @@ async function processBodyExhaustive(body: Word.Body, useSmartIgnore: boolean, c
 
   // 1. Process List Flattening
   if (flattenLists) {
-    const paragraphs = body.paragraphs;
-    paragraphs.load("items/isListItem,items/listItem/retrieveLabel");
-    await context.sync();
+    try {
+      const paragraphs = body.paragraphs;
+      paragraphs.load("items/isListItem,items/listItem/listString");
+      await context.sync();
 
-    for (let i = 0; i < paragraphs.items.length; i++) {
-      const para = paragraphs.items[i];
-      if (para.isListItem) {
-        const label = para.listItem.retrieveLabel();
-        await context.sync();
-        const thaiLabel = convertText(label.value, false);
-        // Delete auto-numbering and insert Thai text
-        para.listItem.deleteNumbering();
-        para.insertText(thaiLabel + " ", "Start");
+      for (let i = 0; i < paragraphs.items.length; i++) {
+        const para = paragraphs.items[i];
+        if (para.isListItem) {
+          const listLabel = para.listItem.listString;
+          const thaiLabel = convertText(listLabel, false);
+          // Detach from automatic list and insert manual Thai label
+          para.detachFromList();
+          para.insertText(thaiLabel + " ", "Start");
+        }
       }
-    }
+    } catch (e) {}
   }
 
   // 2. Process the main text content
@@ -172,10 +160,8 @@ export async function convertSelection(useSmartIgnore: boolean) {
  */
 export async function convertDocument(useSmartIgnore: boolean, includeHF: boolean, flattenLists: boolean) {
   await Word.run(async (context: Word.RequestContext) => {
-    // 1. Process Body
     await processBodyExhaustive(context.document.body, useSmartIgnore, context, flattenLists);
 
-    // 2. Process Headers/Footers
     if (includeHF) {
       const sections = context.document.sections;
       sections.load("items");
