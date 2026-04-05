@@ -84,59 +84,74 @@ export async function convertMainBody(useSmartIgnore: boolean) {
 }
 
 /**
- * Advanced Elements Processing (Flattening)
+ * Advanced Elements Processing (Exhaustive & Robust)
  */
 async function processDeepBody(body: Word.Body, useSmartIgnore: boolean, context: Word.RequestContext) {
   if (!body) return;
 
-  // 1. Flatten Lists (๑.๑)
-  const paragraphs = body.paragraphs;
-  paragraphs.load("items/isListItem,items/listItem");
-  await context.sync();
+  // 1. Flatten Lists (๑.๑) - Pre-load all data
+  try {
+    const paragraphs = body.paragraphs;
+    paragraphs.load("items/isListItem,items/listItem");
+    await context.sync();
 
-  for (let i = 0; i < paragraphs.items.length; i++) {
-    const para = paragraphs.items[i];
-    if (para.isListItem) {
-      try {
-        para.listItem.load("listString");
-        await context.sync();
-        const listString = para.listItem.listString;
-        const thaiLabel = convertText(listString, false);
-        para.detachFromList();
-        para.insertText(thaiLabel + " ", "Start");
-      } catch (e) {}
+    for (let i = 0; i < paragraphs.items.length; i++) {
+      const para = paragraphs.items[i];
+      if (para.isListItem && para.listItem) {
+        try {
+          para.listItem.load("listString");
+          await context.sync();
+          const listString = para.listItem.listString;
+          if (listString) {
+            const thaiLabel = convertText(listString, false);
+            para.detachFromList();
+            para.insertText(thaiLabel + " ", "Start");
+          }
+        } catch (e) {}
+      }
     }
-  }
+  } catch (e) {}
 
-  // 2. Process text
-  await processRange(body.getRange(), useSmartIgnore, context);
+  // 2. Process text in this body
+  try {
+    await processRange(body.getRange(), useSmartIgnore, context);
+  } catch (e) {}
 
   // 3. Shapes
-  const shapes = body.shapes;
-  shapes.load("items/body");
-  await context.sync();
-  for (let i = 0; i < shapes.items.length; i++) {
-    const shape = shapes.items[i];
-    if (shape && shape.body) {
-      await processDeepBody(shape.body, useSmartIgnore, context);
+  try {
+    const shapes = body.shapes;
+    shapes.load("items/body");
+    await context.sync();
+    for (let i = 0; i < shapes.items.length; i++) {
+      const shape = shapes.items[i];
+      // Note: shape.body can throw ItemNotFound if not supported
+      try {
+        if (shape.body) {
+          await processDeepBody(shape.body, useSmartIgnore, context);
+        }
+      } catch (innerErr) {}
     }
-  }
+  } catch (e) {}
 
   // 4. Fields (captions, page numbers)
-  const fields = body.fields;
-  fields.load("items/result");
-  await context.sync();
-  for (let i = 0; i < fields.items.length; i++) {
-    const field = fields.items[i];
-    if (field && field.result) {
-      await processRange(field.result, useSmartIgnore, context);
+  try {
+    const fields = body.fields;
+    fields.load("items/result");
+    await context.sync();
+    for (let i = 0; i < fields.items.length; i++) {
+      const field = fields.items[i];
+      try {
+        if (field && field.result) {
+          await processRange(field.result, useSmartIgnore, context);
+        }
+      } catch (innerErr) {}
     }
-  }
+  } catch (e) {}
 }
 
 export async function flattenAdvancedElements(useSmartIgnore: boolean) {
   await Word.run(async (context: Word.RequestContext) => {
-    // 1. Headers/Footers
+    // 1. Headers/Footers across all sections
     const sections = context.document.sections;
     sections.load("items");
     await context.sync();
@@ -150,13 +165,17 @@ export async function flattenAdvancedElements(useSmartIgnore: boolean) {
       ];
       for (const type of hfTypes) {
         try {
-          await processDeepBody(section.getHeader(type), useSmartIgnore, context);
-          await processDeepBody(section.getFooter(type), useSmartIgnore, context);
+          const header = section.getHeader(type);
+          await processDeepBody(header, useSmartIgnore, context);
+        } catch (e) {}
+        try {
+          const footer = section.getFooter(type);
+          await processDeepBody(footer, useSmartIgnore, context);
         } catch (e) {}
       }
     }
 
-    // 2. Shapes in main body
+    // 2. Main body recursive search (for shapes and nested fields)
     await processDeepBody(context.document.body, useSmartIgnore, context);
     
     await context.sync();
