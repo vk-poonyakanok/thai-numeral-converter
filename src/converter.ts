@@ -77,15 +77,14 @@ async function processAllDocumentParts(context: Word.RequestContext, useSmartIgn
 
   // 2. Process Shapes (Textboxes)
   const shapes = body.shapes;
-  shapes.load("items");
+  // Load textFrame and the nested textRange
+  shapes.load("items/textFrame/textRange");
   await context.sync();
 
   for (let i = 0; i < shapes.items.length; i++) {
     const shape = shapes.items[i];
-    // Check if the shape has a text frame
-    const textFrame = shape.textFrame;
-    if (textFrame) {
-      const shapeRange = textFrame.textRange;
+    if (shape.textFrame && shape.textFrame.hasText) {
+      const shapeRange = shape.textFrame.textRange;
       await processRange(shapeRange, useSmartIgnore, context);
     }
   }
@@ -109,22 +108,6 @@ async function processAllDocumentParts(context: Word.RequestContext, useSmartIgn
 
     for (const part of parts) {
       await processRange(part.getRange(), useSmartIgnore, context);
-    }
-  }
-
-  // 4. Handle List Numbering (Experimental)
-  // Office.js doesn't allow direct text manipulation of the "auto-number" itself easily.
-  // Instead, we can try to set the paragraph's numbering style if it's a list.
-  const paragraphs = body.paragraphs;
-  paragraphs.load("items/isListItem");
-  await context.sync();
-
-  for (let i = 0; i < paragraphs.items.length; i++) {
-    const para = paragraphs.items[i];
-    if (para.isListItem) {
-        // Attempt to change numbering to Thai style if the API version supports it.
-        // Note: This requires Word Api 1.3+
-        // para.listItem.levelNumberingStyle = "ThaiArabic";
     }
   }
 }
