@@ -37,10 +37,12 @@ export function convertText(text: string, useSmartIgnore: boolean): string {
 }
 
 /**
- * Core logic to process a range SURGICALLY.
+ * Performs Global Replacement for digits 0-9 in a range.
+ * Mimics VBA Find.Execute Replace:=wdReplaceAll
  */
-async function processRange(range: Word.Range, useSmartIgnore: boolean, context: Word.RequestContext) {
+async function replaceAllDigitsInRange(range: Word.Range, useSmartIgnore: boolean, context: Word.RequestContext) {
   try {
+    // Search for all digit blocks
     const searchPattern = useSmartIgnore ? "[a-zA-Z0-9]{1,}" : "[0-9]{1,}";
     const results = range.search(searchPattern, { matchWildcards: true });
     results.load("items");
@@ -66,102 +68,68 @@ async function processRange(range: Word.Range, useSmartIgnore: boolean, context:
 }
 
 /**
- * Main Conversion Functions
+ * Processes a "Story" (Body, Header, Footer, Shape Body)
  */
-export async function convertSelection(useSmartIgnore: boolean) {
-  await Word.run(async (context: Word.RequestContext) => {
-    const selection = context.document.getSelection();
-    await processRange(selection, useSmartIgnore, context);
-    await context.sync();
-  });
-}
-
-export async function convertMainBody(useSmartIgnore: boolean) {
-  await Word.run(async (context: Word.RequestContext) => {
-    await processRange(context.document.body.getRange(), useSmartIgnore, context);
-    await context.sync();
-  });
-}
-
-/**
- * Manual Robust Processing for Special Elements
- */
-async function processDeepBodyManual(body: Word.Body, useSmartIgnore: boolean, context: Word.RequestContext) {
+async function processStory(body: Word.Body, useSmartIgnore: boolean, context: Word.RequestContext) {
   if (!body) return;
 
-  // 1. Manual List Flattening (๑.๑) - Paragraph by Paragraph
+  // 1. Handle Fields (Page Numbers, Total Pages)
+  // VBA approach: Update field codes with \* ThaiArabic
   try {
-    const paragraphs = body.paragraphs;
-    paragraphs.load("items/isListItem,items/listItem");
+    const fields = body.fields;
+    fields.load("items/type,items/code");
     await context.sync();
 
-    for (let i = 0; i < paragraphs.items.length; i++) {
-      const para = paragraphs.items[i];
-      if (para.isListItem && para.listItem) {
+    for (let i = 0; i < fields.items.length; i++) {
+      const field = fields.items[i];
+      const type = field.type.toString().toLowerCase();
+      // Page = 33, NumPages = 26
+      if (type === "page" || type === "numpages") {
         try {
-          para.listItem.load("listString");
-          await context.sync();
-          const listLabel = para.listItem.listString;
-          if (listLabel) {
-            const thaiLabel = convertText(listLabel, false);
-            // Manually detach and insert to guarantee flattening
-            para.detachFromList();
-            para.insertText(thaiLabel + " ", "Start");
+          if (!field.code.includes("ThaiArabic")) {
+            field.code = field.code + " \\* ThaiArabic ";
           }
-        } catch (e) {}
+          (field as any).update();
+        } catch (e) {
+          // If we can't update code (WordApi < 1.5), fallback to flattening
+          try {
+            const res = field.result;
+            res.load("text");
+            await context.sync();
+            if (res.text) {
+              const thai = convertText(res.text, false);
+              field.unlink();
+              res.insertText(thai, "Replace");
+            }
+          } catch (err) {}
+        }
       }
     }
   } catch (e) {}
 
-  // 2. Process regular text
-  try {
-    await processRange(body.getRange(), useSmartIgnore, context);
-  } catch (e) {}
+  // 2. Perform Global Digit Replacement in this story
+  await replaceAllDigitsInRange(body.getRange(), useSmartIgnore, context);
 
-  // 3. Process Fields (Page Numbers, Captions) - Manual Replacement
-  try {
-    const fields = body.fields;
-    fields.load("items/result");
-    await context.sync();
-    for (let i = 0; i < fields.items.length; i++) {
-      const field = fields.items[i];
-      try {
-        const resRange = field.result;
-        resRange.load("text");
-        await context.sync();
-        if (resRange.text) {
-          const originalText = resRange.text;
-          const thaiText = convertText(originalText, useSmartIgnore);
-          if (originalText !== thaiText) {
-            // Replacing result often unlinks field in Office.js
-            resRange.insertText(thaiText, "Replace");
-          }
-        }
-      } catch (e) {}
-    }
-  } catch (e) {}
-
-  // 4. Shapes (Textboxes) - Multi-path access
+  // 3. Recurse into Shapes (Textboxes) in this story
   try {
     const shapes = body.shapes;
     shapes.load("items");
     await context.sync();
     for (let i = 0; i < shapes.items.length; i++) {
       const shape = shapes.items[i];
-      // Path A: Body
       try {
         const sBody = (shape as any).body;
         sBody.load("type");
         await context.sync();
-        await processDeepBodyManual(sBody, useSmartIgnore, context);
+        await processStory(sBody, useSmartIgnore, context);
       } catch (e) {
-        // Path B: TextFrame
+        // Fallback for shapes without a full 'body' property
         try {
           const tFrame = (shape as any).textFrame;
           tFrame.load("hasText");
           await context.sync();
           if (tFrame.hasText) {
-            await processRange(tFrame.textRange, useSmartIgnore, context);
+            await replaceAllDigitsInRange(tFrame.textRange, useSmartIgnore, context);
           }
         } catch (err) {}
       }
@@ -169,9 +137,58 @@ async function processDeepBodyManual(body: Word.Body, useSmartIgnore: boolean, c
   } catch (e) {}
 }
 
+/**
+ * Main Conversion Functions
+ */
+export async function convertSelection(useSmartIgnore: boolean) {
+  await Word.run(async (context: Word.RequestContext) => {
+    const selection = context.document.getSelection();
+    await replaceAllDigitsInRange(selection, useSmartIgnore, context);
+    await context.sync();
+  });
+}
+
+export async function convertMainBody(useSmartIgnore: boolean) {
+  await Word.run(async (context: Word.RequestContext) => {
+    await processStory(context.document.body, useSmartIgnore, context);
+    await context.sync();
+  });
+}
+
+/**
+ * THE ULTIMATE CONVERTER (Inspired by VBA)
+ */
 export async function flattenAdvancedElements(useSmartIgnore: boolean) {
   await Word.run(async (context: Word.RequestContext) => {
-    // 1. Process all Sections (Headers/Footers)
+    // 1. FREEZE AUTOMATIC LISTS (ActiveDocument.ConvertNumbersToText)
+    try {
+      (context.document as any).convertNumbersToText("AllNumbers");
+      await context.sync();
+    } catch (e) {
+      // Manual fallback if API not supported
+      const body = context.document.body;
+      const paragraphs = body.paragraphs;
+      paragraphs.load("items/isListItem,items/listItem");
+      await context.sync();
+      for (let i = 0; i < paragraphs.items.length; i++) {
+        const para = paragraphs.items[i];
+        if (para.isListItem && para.listItem) {
+          try {
+            para.listItem.load("listString");
+            await context.sync();
+            const label = para.listItem.listString;
+            para.detachFromList();
+            para.insertText(convertText(label, false) + " ", "Start");
+          } catch (err) {}
+        }
+      }
+    }
+
+    // 2. PROCESS ALL STORY RANGES
+    // A. Main Body
+    await processStory(context.document.body, useSmartIgnore, context);
+
+    // B. Headers and Footers in all sections
     const sections = context.document.sections;
     sections.load("items");
     await context.sync();
@@ -184,14 +201,11 @@ export async function flattenAdvancedElements(useSmartIgnore: boolean) {
         Word.HeaderFooterType.evenPages
       ];
       for (const type of hfTypes) {
-        try { await processDeepBodyManual(section.getHeader(type), useSmartIgnore, context); } catch (e) {}
-        try { await processDeepBodyManual(section.getFooter(type), useSmartIgnore, context); } catch (e) {}
+        try { await processStory(section.getHeader(type), useSmartIgnore, context); } catch (e) {}
+        try { await processStory(section.getFooter(type), useSmartIgnore, context); } catch (e) {}
       }
     }
 
-    // 2. Process main document body
-    await processDeepBodyManual(context.document.body, useSmartIgnore, context);
-    
     await context.sync();
   });
 }
