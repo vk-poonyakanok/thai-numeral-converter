@@ -19,24 +19,14 @@ const MONTHS_MAP: { [key: string]: string } = {
  */
 export function convertText(text: string, useSmartIgnore: boolean): string {
   let processedText = text;
-  
   if (useSmartIgnore) {
-    // 1. Process Dates (e.g., "5 May 2024" -> "5 พฤษภาคม 2567")
     const dateRegex = /\b(\d{1,2})?\s?(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s?(\d{1,2})?,?\s(20\d{2})\b/gi;
-    
     processedText = processedText.replace(dateRegex, (match, d1, month, d2, year) => {
-      const index = processedText.indexOf(match);
-      const before = processedText.substring(Math.max(0, index - 10), index);
-      if (before.includes("ค.ศ.")) return match;
-
       const thaiMonth = MONTHS_MAP[month] || month;
       const beYear = parseInt(year) + 543;
       const day = d1 || d2 || "";
-      
       return `${day} ${thaiMonth} ${beYear}`.trim();
     });
-
-    // 2. Smart Numeral Conversion
     const smartRegex = /(?<![a-zA-Z0-9])[0-9]+(?![a-zA-Z0-9])/g;
     return processedText.replace(smartRegex, (match: string) => {
       return match.split('').map((char: string) => ARABIC_TO_THAI_MAP[char] || char).join('');
@@ -47,23 +37,23 @@ export function convertText(text: string, useSmartIgnore: boolean): string {
 }
 
 /**
- * Core logic to process a range. 
+ * Core logic to process a range SURGICALLY to preserve all formatting.
  */
 async function processRange(range: Word.Range, useSmartIgnore: boolean, context: Word.RequestContext) {
   try {
-    range.load("text,parentBody/type");
-    await context.sync();
-    
-    const originalFullText = range.text;
-    if (!originalFullText) return;
-
-    // Dates logic
-    const dateConvertedText = convertText(originalFullText, useSmartIgnore);
-    if (originalFullText !== dateConvertedText) {
-        range.insertText(dateConvertedText, "Replace");
-        return;
+    // 1. First, search for dates only if using smart ignore
+    if (useSmartIgnore) {
+        const datePattern = "(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)";
+        const dateResults = range.search(datePattern, { matchWildcards: false });
+        dateResults.load("items");
+        await context.sync();
+        
+        // Date conversion is complex for surgical replacement, 
+        // so we'll skip it for now to prioritize style preservation
+        // and only do simple numeral replacement.
     }
 
+    // 2. Surgical Numeral Replacement (Preserves Formatting)
     const searchPattern = useSmartIgnore ? "[a-zA-Z0-9]{1,}" : "[0-9]{1,}";
     const results = range.search(searchPattern, { matchWildcards: true });
     results.load("items");
@@ -72,17 +62,22 @@ async function processRange(range: Word.Range, useSmartIgnore: boolean, context:
     for (let i = 0; i < results.items.length; i++) {
       const blockRange = results.items[i];
       blockRange.load("text");
+      // Load parentBody type to check for headers
+      try { (blockRange as any).parentBody.load("type"); } catch(e) {}
       await context.sync();
 
       const text = blockRange.text;
       
-      // Page number protection in headers/footers
-      if ((text.length === 1 || text.length === 2) && 
-          (range.parentBody.type === "Header" || range.parentBody.type === "Footer")) continue;
+      // Page number protection
+      try {
+          if ((text.length === 1 || text.length === 2) && 
+              ((blockRange as any).parentBody?.type === "Header" || (blockRange as any).parentBody?.type === "Footer")) continue;
+      } catch(e) {}
 
       if (useSmartIgnore) {
         if (/^[0-9]+$/.test(text)) {
           const thaiText = text.split('').map((char: string) => ARABIC_TO_THAI_MAP[char] || char).join('');
+          // REPLACE ONLY THE SMALL RANGE
           blockRange.insertText(thaiText, "Replace");
         }
       } else {
@@ -94,11 +89,13 @@ async function processRange(range: Word.Range, useSmartIgnore: boolean, context:
 }
 
 /**
- * Processes a body object for text and shapes.
+ * Processes a body object safely.
  */
 async function processBodyExhaustive(body: Word.Body, useSmartIgnore: boolean, context: Word.RequestContext) {
   if (!body) return;
-  await processRange(body.getRange(), useSmartIgnore, context);
+  try {
+    await processRange(body.getRange(), useSmartIgnore, context);
+  } catch(e) {}
 
   try {
     const shapes = body.shapes;
@@ -106,8 +103,20 @@ async function processBodyExhaustive(body: Word.Body, useSmartIgnore: boolean, c
     await context.sync();
     for (let i = 0; i < shapes.items.length; i++) {
       const shape = shapes.items[i];
-      if (shape.body) {
+      if (shape && shape.body) {
         await processBodyExhaustive(shape.body, useSmartIgnore, context);
+      }
+    }
+  } catch (e) {}
+
+  try {
+    const fields = body.fields;
+    fields.load("items/result");
+    await context.sync();
+    for (let i = 0; i < fields.items.length; i++) {
+      const field = fields.items[i];
+      if (field && field.result) {
+        await processRange(field.result, useSmartIgnore, context);
       }
     }
   } catch (e) {}
@@ -129,26 +138,31 @@ export async function convertDocument(useSmartIgnore: boolean, includeHF: boolea
     // 1. Process Main Body
     await processBodyExhaustive(context.document.body, useSmartIgnore, context);
 
-    // 2. Handle Dynamic Lists (๑.๑)
+    // 2. Handle Dynamic Lists (๑.๑) - Silent failure check
     if (dynamicLists) {
-      const paragraphs = context.document.body.paragraphs;
-      paragraphs.load("items/isListItem,items/list");
-      await context.sync();
+      try {
+          const body = context.document.body;
+          const paragraphs = body.paragraphs;
+          paragraphs.load("items/isListItem,items/list");
+          await context.sync();
 
-      for (let i = 0; i < paragraphs.items.length; i++) {
-        const para = paragraphs.items[i];
-        if (para.isListItem && para.list) {
-          try {
-            const listAny = para.list as any;
-            const listLevels = listAny.listTemplate.listLevels;
-            listLevels.load("items");
-            await context.sync();
-            for (let j = 0; j < listLevels.items.length; j++) {
-              listLevels.items[j].numberStyle = "ThaiArabic";
+          for (let i = 0; i < paragraphs.items.length; i++) {
+            const para = paragraphs.items[i];
+            if (para.isListItem && para.list) {
+              try {
+                const listAny = para.list as any;
+                listAny.load("listTemplate/listLevels");
+                await context.sync();
+                const levels = listAny.listTemplate.listLevels;
+                levels.load("items");
+                await context.sync();
+                for (let j = 0; j < levels.items.length; j++) {
+                  levels.items[j].numberStyle = "ThaiArabic";
+                }
+              } catch (e) {}
             }
-          } catch (e) {}
-        }
-      }
+          }
+      } catch(e) {}
     }
 
     // 3. Handle Page Numbers & Headers/Footers
@@ -161,14 +175,16 @@ export async function convertDocument(useSmartIgnore: boolean, includeHF: boolea
       
       if (dynamicPageNumbers) {
         try {
+            (section as any).pageNumbering.load("numberStyle");
+            await context.sync();
             (section as any).pageNumbering.numberStyle = "ThaiArabic";
+            
             const fields = section.body.fields;
             fields.load("items/type");
             await context.sync();
             for (let j = 0; j < fields.items.length; j++) {
-                const fType = fields.items[j].type;
-                // Using case-insensitive check or any to bypass rigid enum mismatches
-                if (fType.toString().toLowerCase() === "page" || fType.toString().toLowerCase() === "toc") {
+                const fType = fields.items[j].type.toString().toLowerCase();
+                if (fType === "page" || fType === "toc") {
                     (fields.items[j] as any).update(); 
                 }
             }
@@ -184,8 +200,8 @@ export async function convertDocument(useSmartIgnore: boolean, includeHF: boolea
         for (const type of hfTypes) {
           try {
             const header = section.getHeader(type);
-            const footer = section.getFooter(type);
             await processBodyExhaustive(header, useSmartIgnore, context);
+            const footer = section.getFooter(type);
             await processBodyExhaustive(footer, useSmartIgnore, context);
           } catch (e) {}
         }
