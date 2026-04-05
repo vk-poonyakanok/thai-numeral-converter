@@ -84,31 +84,42 @@ export async function convertMainBody(useSmartIgnore: boolean) {
 }
 
 /**
- * Advanced Elements Processing (Exhaustive & Robust)
+ * Advanced Elements Processing (Exhaustive Flattening)
  */
 async function processDeepBody(body: Word.Body, useSmartIgnore: boolean, context: Word.RequestContext) {
   if (!body) return;
 
-  // 1. Flatten Lists (๑.๑) - Pre-load all data
+  // 1. Convert native document lists (Freezing)
+  // According to VBA: ActiveDocument.ConvertNumbersToText
+  // In Office.js, we attempt to use convertNumbersToText() if available (WordApiDesktop 1.3/1.4)
   try {
-    const paragraphs = body.paragraphs;
-    paragraphs.load("items/isListItem,items/listItem");
-    await context.sync();
+    const docAny = context.document as any;
+    if (docAny.convertNumbersToText) {
+        docAny.convertNumbersToText("AllNumbers");
+        await context.sync();
+    } else {
+        // Fallback: Manually iterate paragraphs and detach
+        const paragraphs = body.paragraphs;
+        paragraphs.load("items/isListItem");
+        await context.sync();
 
-    for (let i = 0; i < paragraphs.items.length; i++) {
-      const para = paragraphs.items[i];
-      if (para.isListItem && para.listItem) {
-        try {
-          para.listItem.load("listString");
-          await context.sync();
-          const listString = para.listItem.listString;
-          if (listString) {
-            const thaiLabel = convertText(listString, false);
-            para.detachFromList();
-            para.insertText(thaiLabel + " ", "Start");
+        for (let i = 0; i < paragraphs.items.length; i++) {
+          const para = paragraphs.items[i];
+          if (para.isListItem) {
+            try {
+              const listItem = para.listItem;
+              listItem.load("listString");
+              await context.sync();
+              
+              const listString = listItem.listString;
+              if (listString) {
+                const thaiLabel = convertText(listString, false);
+                para.detachFromList();
+                para.insertText(thaiLabel + " ", "Start");
+              }
+            } catch (e) {}
           }
-        } catch (e) {}
-      }
+        }
     }
   } catch (e) {}
 
@@ -120,20 +131,21 @@ async function processDeepBody(body: Word.Body, useSmartIgnore: boolean, context
   // 3. Shapes
   try {
     const shapes = body.shapes;
-    shapes.load("items/body");
+    shapes.load("items/id");
     await context.sync();
     for (let i = 0; i < shapes.items.length; i++) {
       const shape = shapes.items[i];
-      // Note: shape.body can throw ItemNotFound if not supported
       try {
-        if (shape.body) {
-          await processDeepBody(shape.body, useSmartIgnore, context);
-        }
+        const shapeBody = shape.body;
+        shapeBody.load("type");
+        await context.sync();
+        await processDeepBody(shapeBody, useSmartIgnore, context);
       } catch (innerErr) {}
     }
   } catch (e) {}
 
-  // 4. Fields (captions, page numbers)
+  // 4. Fields (Page numbers, captions, TOC)
+  // Instead of updating them, we read their result, unlink them to plain text, and convert the text.
   try {
     const fields = body.fields;
     fields.load("items/result");
@@ -141,8 +153,21 @@ async function processDeepBody(body: Word.Body, useSmartIgnore: boolean, context
     for (let i = 0; i < fields.items.length; i++) {
       const field = fields.items[i];
       try {
-        if (field && field.result) {
-          await processRange(field.result, useSmartIgnore, context);
+        const resultRange = field.result;
+        resultRange.load("text");
+        await context.sync();
+        
+        if (resultRange.text) {
+          const originalText = resultRange.text;
+          const convertedText = convertText(originalText, useSmartIgnore);
+          
+          if (originalText !== convertedText) {
+            // Unlink breaks the dynamic connection, making it static text
+            field.unlink();
+            // Since it's now static text, we can just let processRange handle it, 
+            // or replace it right here. We'll replace it here for certainty.
+            resultRange.insertText(convertedText, "Replace");
+          }
         }
       } catch (innerErr) {}
     }
@@ -151,7 +176,10 @@ async function processDeepBody(body: Word.Body, useSmartIgnore: boolean, context
 
 export async function flattenAdvancedElements(useSmartIgnore: boolean) {
   await Word.run(async (context: Word.RequestContext) => {
-    // 1. Headers/Footers across all sections
+    // 1. Main body recursive search (for shapes, nested fields, lists)
+    await processDeepBody(context.document.body, useSmartIgnore, context);
+
+    // 2. Headers/Footers across all sections
     const sections = context.document.sections;
     sections.load("items");
     await context.sync();
@@ -174,9 +202,6 @@ export async function flattenAdvancedElements(useSmartIgnore: boolean) {
         } catch (e) {}
       }
     }
-
-    // 2. Main body recursive search (for shapes and nested fields)
-    await processDeepBody(context.document.body, useSmartIgnore, context);
     
     await context.sync();
   });
