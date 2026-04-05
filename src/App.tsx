@@ -10,7 +10,9 @@ import {
   FontWeights, 
   Separator,
   MessageBar,
-  MessageBarType
+  MessageBarType,
+  Spinner,
+  SpinnerSize
 } from '@fluentui/react';
 import { convertSelection, convertMainBody, flattenAdvancedElements } from './converter';
 import './App.css';
@@ -60,15 +62,19 @@ const stackSpacing = { childrenGap: 15 };
 function App() {
   const [useSmartIgnore, setUseSmartIgnore] = useState(true);
   const [status, setStatus] = useState<{message: string, type: MessageBarType} | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleAction = async (actionFn: () => Promise<void>) => {
     try {
       setStatus(null);
+      setIsProcessing(true);
       await actionFn();
       setStatus({ message: "ดำเนินการเรียบร้อย!", type: MessageBarType.success });
     } catch (error: any) {
       console.error(error);
       setStatus({ message: `Error: ${error.message || "ล้มเหลว"}`, type: MessageBarType.error });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -79,7 +85,7 @@ function App() {
           <Text styles={logoStyle}>IT๙</Text>
           <Stack>
             <Text variant="xxLarge" styles={boldStyle}>Converter</Text>
-            <Text variant="small" styles={{ root: { color: '#605e5c', marginTop: '-5px' } }}>v1.16.0</Text>
+            <Text variant="small" styles={{ root: { color: '#605e5c', marginTop: '-5px' } }}>v1.18.0</Text>
           </Stack>
         </Stack>
         
@@ -98,6 +104,7 @@ function App() {
           onChange={(_, checked) => setUseSmartIgnore(!!checked)}
           onText="On"
           offText="Off"
+          disabled={isProcessing}
         />
         <Text variant="small" styles={{ root: { color: '#666', marginTop: '-15px', marginLeft: '25px' } }}>
           ข้ามเลขในคำอังกฤษ เช่น spin9, 9arm, www.site123.com
@@ -110,20 +117,30 @@ function App() {
             text="แปลงเนื้อหาหลัก" 
             onClick={() => handleAction(() => convertMainBody(useSmartIgnore))} 
             iconProps={{ iconName: 'Document' }}
+            disabled={isProcessing}
           />
           <PrimaryButton 
             text="แปลงส่วนอื่นๆ (หัว/ท้าย, กล่องข้อความ, ลำดับ)" 
             onClick={() => handleAction(() => flattenAdvancedElements(useSmartIgnore))} 
             iconProps={{ iconName: 'FullWidth' }}
+            disabled={isProcessing}
           />
           <DefaultButton 
             text="แปลงเฉพาะที่เลือก" 
             onClick={() => handleAction(() => convertSelection(useSmartIgnore))} 
             iconProps={{ iconName: 'SingleColumn' }}
+            disabled={isProcessing}
           />
         </Stack>
 
-        {status && (
+        {isProcessing && (
+          <Stack horizontal horizontalAlign="center" tokens={{ childrenGap: 10 }}>
+            <Spinner size={SpinnerSize.medium} />
+            <Text>กำลังดำเนินการ...</Text>
+          </Stack>
+        )}
+
+        {status && !isProcessing && (
           <MessageBar
             messageBarType={status.type}
             isMultiline={true}
