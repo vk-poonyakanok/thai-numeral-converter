@@ -129,7 +129,7 @@ function App() {
           onChange={(_, checked) => setFlattenLists(!!checked)} 
         />
         <Text variant="small" styles={{ root: { color: '#666', marginTop: '-10px', marginLeft: '25px' } }}>
-          เปลี่ยนเลข 1.1 -> ๑.๑ แบบถาวร (ยกเลิกอัตโนมัติ)
+          เปลี่ยนเลข 1.1 {'->'} ๑.๑ แบบถาวร (ยกเลิกอัตโนมัติ)
         </Text>
 
         <Separator />
