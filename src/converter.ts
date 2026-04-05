@@ -29,54 +29,45 @@ export function convertText(text: string, useSmartIgnore: boolean): string {
 }
 
 /**
- * Helper to check if a character is a Latin letter.
- */
-function isLetter(char: string | undefined): boolean {
-  if (!char) return false;
-  return /[a-zA-Z]/.test(char);
-}
-
-/**
  * Core logic to process a range and replace numbers while preserving formatting.
  */
 async function processRange(range: Word.Range, useSmartIgnore: boolean, context: Word.RequestContext) {
-  // Search for all digit sequences
-  const results = range.search("[0-9]{1,}", { matchWildcards: true });
-  results.load("items");
-  await context.sync();
-
-  for (let i = 0; i < results.items.length; i++) {
-    const numRange = results.items[i];
-    
-    if (useSmartIgnore) {
-      // To implement Smart Ignore with formatting preservation, we check the characters 
-      // immediately before and after the matched range.
-      
-      const rangeBefore = numRange.getRange("Before").expandTo(numRange.getRange("Before").move("Character", -1));
-      const rangeAfter = numRange.getRange("After").expandTo(numRange.getRange("After").move("Character", 1));
-      
-      rangeBefore.load("text");
-      rangeAfter.load("text");
-      await context.sync();
-
-      const charBefore = rangeBefore.text;
-      const charAfter = rangeAfter.text;
-
-      // If either side is a letter, skip this conversion
-      if (isLetter(charBefore) || isLetter(charAfter)) {
-        continue;
-      }
-    }
-
-    // Load the current text of the number range
-    numRange.load("text");
+  if (useSmartIgnore) {
+    // Search for all contiguous alphanumeric blocks
+    const results = range.search("[a-zA-Z0-9]{1,}", { matchWildcards: true });
+    results.load("items");
     await context.sync();
 
-    const originalText = numRange.text;
-    const thaiText = originalText.split('').map((char: string) => ARABIC_TO_THAI_MAP[char] || char).join('');
-    
-    if (originalText !== thaiText) {
-      numRange.insertText(thaiText, "Replace");
+    for (let i = 0; i < results.items.length; i++) {
+      const blockRange = results.items[i];
+      blockRange.load("text");
+      await context.sync();
+
+      const text = blockRange.text;
+      // If the block is purely numeric, convert it
+      if (/^[0-9]+$/.test(text)) {
+        const thaiText = text.split('').map((char: string) => ARABIC_TO_THAI_MAP[char] || char).join('');
+        blockRange.insertText(thaiText, "Replace");
+      }
+      // If it's a mix (e.g., spin9) or purely letters, we ignore it.
+    }
+  } else {
+    // Standard replacement: Find all digit sequences regardless of surrounding text
+    const results = range.search("[0-9]{1,}", { matchWildcards: true });
+    results.load("items");
+    await context.sync();
+
+    for (let i = 0; i < results.items.length; i++) {
+      const numRange = results.items[i];
+      numRange.load("text");
+      await context.sync();
+
+      const originalText = numRange.text;
+      const thaiText = originalText.split('').map((char: string) => ARABIC_TO_THAI_MAP[char] || char).join('');
+      
+      if (originalText !== thaiText) {
+        numRange.insertText(thaiText, "Replace");
+      }
     }
   }
 }
@@ -98,7 +89,7 @@ export async function convertSelection(useSmartIgnore: boolean) {
 export async function convertDocument(useSmartIgnore: boolean) {
   await Word.run(async (context: Word.RequestContext) => {
     const body = context.document.body;
-    await processRange(body, useSmartIgnore, context);
+    await processRange(body.getRange(), useSmartIgnore, context);
     await context.sync();
   });
 }
