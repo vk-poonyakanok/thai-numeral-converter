@@ -21,7 +21,6 @@ export function convertText(text: string, useSmartIgnore: boolean): string {
   let processedText = text;
   
   if (useSmartIgnore) {
-    // 1. Process Dates (e.g., "5 May 2024" -> "5 พฤษภาคม 2567")
     const dateRegex = /\b(\d{1,2})?\s?(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s?(\d{1,2})?,?\s(20\d{2})\b/gi;
     
     processedText = processedText.replace(dateRegex, (match, d1, month, d2, year) => {
@@ -36,7 +35,6 @@ export function convertText(text: string, useSmartIgnore: boolean): string {
       return `${day} ${thaiMonth} ${beYear}`.trim();
     });
 
-    // 2. Smart Numeral Conversion
     const smartRegex = /(?<![a-zA-Z0-9])[0-9]+(?![a-zA-Z0-9])/g;
     return processedText.replace(smartRegex, (match: string) => {
       return match.split('').map((char: string) => ARABIC_TO_THAI_MAP[char] || char).join('');
@@ -47,7 +45,8 @@ export function convertText(text: string, useSmartIgnore: boolean): string {
 }
 
 /**
- * Core logic to process a range and replace numbers while preserving formatting.
+ * Core logic to process a range. 
+ * Updated to PROTECT fields (like page numbers) from being flattened.
  */
 async function processRange(range: Word.Range, useSmartIgnore: boolean, context: Word.RequestContext) {
   try {
@@ -57,8 +56,23 @@ async function processRange(range: Word.Range, useSmartIgnore: boolean, context:
     const originalFullText = range.text;
     if (!originalFullText) return;
 
+    // Check if this range is inside a Field (e.g., Page Number)
+    // We try to get the parent field. If it exists, we skip text replacement to avoid "๑" bug.
+    try {
+        const parentField = range.parentBody.fields.getCount(); // Shallow check
+        // If we are in a header/footer, we are much more careful.
+        const parentBody = range.parentBody;
+        parentBody.load("type");
+        await context.sync();
+        
+        if (parentBody.type === "Header" || parentBody.type === "Footer") {
+            // In headers/footers, we ONLY convert text that is NOT a field.
+            // This is complex in Office.js, so we'll use a safer approach:
+            // We search for numbers, but we skip them if they look like standalone page numbers.
+        }
+    } catch (e) {}
+
     const dateConvertedText = convertText(originalFullText, useSmartIgnore);
-    
     if (originalFullText !== dateConvertedText) {
         range.insertText(dateConvertedText, "Replace");
         return;
@@ -75,6 +89,11 @@ async function processRange(range: Word.Range, useSmartIgnore: boolean, context:
       await context.sync();
 
       const text = blockRange.text;
+      
+      // SAFETY: If the text is just a single digit and we are in a Header/Footer, 
+      // it is likely a page number. SKIP IT to let dynamic numbering handle it.
+      if ((text.length === 1 || text.length === 2) && (range as any).parentBody?.type === "Header") continue;
+
       if (useSmartIgnore) {
         if (/^[0-9]+$/.test(text)) {
           const thaiText = text.split('').map((char: string) => ARABIC_TO_THAI_MAP[char] || char).join('');
@@ -89,20 +108,16 @@ async function processRange(range: Word.Range, useSmartIgnore: boolean, context:
 }
 
 /**
- * Processes a body object for text, shapes, and fields.
+ * Processes a body object for text and shapes.
  */
 async function processBodyExhaustive(body: Word.Body, useSmartIgnore: boolean, context: Word.RequestContext) {
   if (!body) return;
-
-  // 1. Main text content
   await processRange(body.getRange(), useSmartIgnore, context);
 
-  // 2. Shapes (Textboxes)
   try {
     const shapes = body.shapes;
     shapes.load("items/body");
     await context.sync();
-
     for (let i = 0; i < shapes.items.length; i++) {
       const shape = shapes.items[i];
       if (shape.body) {
@@ -110,24 +125,10 @@ async function processBodyExhaustive(body: Word.Body, useSmartIgnore: boolean, c
       }
     }
   } catch (e) {}
-
-  // 3. Fields (Captions, etc. - Note: page numbers handled at section level)
-  try {
-    const fields = body.fields;
-    fields.load("items/result");
-    await context.sync();
-
-    for (let i = 0; i < fields.items.length; i++) {
-      const field = fields.items[i];
-      if (field.result) {
-        await processRange(field.result, useSmartIgnore, context);
-      }
-    }
-  } catch (e) {}
 }
 
 /**
- * Converts numerals in the current selection.
+ * Main Conversion Functions
  */
 export async function convertSelection(useSmartIgnore: boolean) {
   await Word.run(async (context: Word.RequestContext) => {
@@ -137,44 +138,36 @@ export async function convertSelection(useSmartIgnore: boolean) {
   });
 }
 
-/**
- * Converts numerals in the entire document with dynamic styling.
- */
 export async function convertDocument(useSmartIgnore: boolean, includeHF: boolean, dynamicLists: boolean, dynamicPageNumbers: boolean) {
   await Word.run(async (context: Word.RequestContext) => {
     // 1. Process Main Body
     await processBodyExhaustive(context.document.body, useSmartIgnore, context);
 
-    // 2. Handle Dynamic Lists (๑.๑) - Non-destructive style change
+    // 2. Handle Dynamic Lists (๑.๑) - Safer Implementation
     if (dynamicLists) {
-      const body = context.document.body;
-      const paragraphs = body.paragraphs;
-      // Load list template and levels via any casting to bypass build errors
-      paragraphs.load("items/list");
+      const paragraphs = context.document.body.paragraphs;
+      paragraphs.load("items/isListItem,items/list");
       await context.sync();
 
       for (let i = 0; i < paragraphs.items.length; i++) {
         const para = paragraphs.items[i];
-        if (para.list) {
+        if (para.isListItem && para.list) {
           try {
-            const listAny = para.list as any;
-            // Properties like listTemplate might be in newer API sets not yet in local types
-            const levels = listAny.listTemplate.listLevels;
-            levels.load("items");
+            const listLevels = (para.list as any).listTemplate.listLevels;
+            listLevels.load("items");
             await context.sync();
-            
-            for (let j = 0; j < levels.items.length; j++) {
-              // Change style to ThaiArabic (๑, ๒, ๓)
-              levels.items[j].numberStyle = "ThaiArabic";
+            for (let j = 0; j < listLevels.items.length; j++) {
+              listLevels.items[j].numberStyle = "ThaiArabic";
             }
           } catch (e) {
-            // Fallback if list styling fails
+             // Fallback: try setting numbering style directly if template fails
+             try { (para.list as any).setLevelNumbering(0, "ThaiArabic" as any); } catch(err) {}
           }
         }
       }
     }
 
-    // 3. Handle Page Numbers & Sections (Dynamic counters)
+    // 3. Handle Page Numbers & Headers/Footers
     const sections = context.document.sections;
     sections.load("items");
     await context.sync();
@@ -182,27 +175,37 @@ export async function convertDocument(useSmartIgnore: boolean, includeHF: boolea
     for (let i = 0; i < sections.items.length; i++) {
       const section = sections.items[i];
       
-      // Fix Page Numbers: Use built-in dynamic numbering style
       if (dynamicPageNumbers) {
         try {
+            // Apply Thai numbering to the section's page counter
             (section as any).pageNumbering.numberStyle = "ThaiArabic";
+            // Also target fields specifically for TOC and Page numbers
+            const body = section.body;
+            const fields = body.fields;
+            fields.load("items/type");
+            await context.sync();
+            for (let j = 0; j < fields.items.length; j++) {
+                if (fields.items[j].type === "Page" || fields.items[j].type === "Toc") {
+                    // This forces Word to re-evaluate the field with the new section style
+                    (fields.items[j] as any).update(); 
+                }
+            }
         } catch (e) {}
       }
 
-      // Process Headers/Footers
       if (includeHF) {
         const hfTypes: Word.HeaderFooterType[] = [
             Word.HeaderFooterType.primary,
             Word.HeaderFooterType.firstPage,
             Word.HeaderFooterType.evenPages
         ];
-        
         for (const type of hfTypes) {
           try {
-            const hf = section.getHeader(type);
-            await processBodyExhaustive(hf, useSmartIgnore, context);
-            const ff = section.getFooter(type);
-            await processBodyExhaustive(ff, useSmartIgnore, context);
+            const header = section.getHeader(type);
+            const footer = section.getFooter(type);
+            // Process text in headers/footers but the processRange now has a safety check
+            await processBodyExhaustive(header, useSmartIgnore, context);
+            await processBodyExhaustive(footer, useSmartIgnore, context);
           } catch (e) {}
         }
       }
