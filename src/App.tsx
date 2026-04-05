@@ -10,7 +10,8 @@ import {
   FontWeights, 
   Separator,
   MessageBar,
-  MessageBarType
+  MessageBarType,
+  Checkbox
 } from '@fluentui/react';
 import { convertSelection, convertDocument } from './converter';
 import './App.css';
@@ -43,32 +44,45 @@ const myTheme = createTheme({
 });
 
 const boldStyle = { root: { fontWeight: FontWeights.semibold } };
-const stackItemPadding = { root: { padding: 10 } };
-const stackSpacing = { childrenGap: 20 };
+const logoStyle = { 
+  root: { 
+    background: '#d83b01', 
+    color: 'white', 
+    fontWeight: 'bold', 
+    padding: '4px 8px', 
+    borderRadius: '4px',
+    fontSize: '24px',
+    marginRight: '12px'
+  } 
+};
+const stackItemPadding = { root: { padding: 15 } };
+const stackSpacing = { childrenGap: 15 };
 
 function App() {
   const [useSmartIgnore, setUseSmartIgnore] = useState(true);
+  const [includeHF, setIncludeHF] = useState(true);
+  const [flattenLists, setFlattenLists] = useState(false);
   const [status, setStatus] = useState<{message: string, type: MessageBarType} | null>(null);
 
   const handleConvertSelection = async () => {
     try {
       setStatus(null);
       await convertSelection(useSmartIgnore);
-      setStatus({ message: "Selection converted successfully!", type: MessageBarType.success });
+      setStatus({ message: "แปลงเฉพาะที่เลือกเรียบร้อย!", type: MessageBarType.success });
     } catch (error: any) {
       console.error(error);
-      setStatus({ message: `Error: ${error.message || "Failed to convert selection"}`, type: MessageBarType.error });
+      setStatus({ message: `Error: ${error.message || "ล้มเหลว"}`, type: MessageBarType.error });
     }
   };
 
   const handleConvertDocument = async () => {
     try {
       setStatus(null);
-      await convertDocument(useSmartIgnore);
-      setStatus({ message: "Entire document converted successfully!", type: MessageBarType.success });
+      await convertDocument(useSmartIgnore, includeHF, flattenLists);
+      setStatus({ message: "แปลงทั้งเอกสารเรียบร้อย!", type: MessageBarType.success });
     } catch (error: any) {
       console.error(error);
-      setStatus({ message: `Error: ${error.message || "Failed to convert document"}`, type: MessageBarType.error });
+      setStatus({ message: `Error: ${error.message || "ล้มเหลว"}`, type: MessageBarType.error });
     }
   };
 
@@ -76,15 +90,21 @@ function App() {
     <ThemeProvider theme={myTheme}>
       <Stack styles={stackItemPadding} tokens={stackSpacing}>
         <Stack horizontal verticalAlign="center">
-          <Text variant="xxLarge" styles={boldStyle}>Thai Numeral Converter</Text>
+          <Text styles={logoStyle}>IT๙</Text>
+          <Stack>
+            <Text variant="xxLarge" styles={boldStyle}>IT๙ Converter</Text>
+            <Text variant="small" styles={{ root: { color: '#605e5c', marginTop: '-5px' } }}>v1.10.0</Text>
+          </Stack>
         </Stack>
         
         <Text variant="medium">
-          Easily convert Arabic numerals (0-9) to Thai numerals (๐-๙).
+          เครื่องมือแปลงเลขไทยระดับมืออาชีพ พร้อมระบบข้ามคำภาษาอังกฤษและ URL อัตโนมัติ
         </Text>
 
         <Separator />
 
+        <Text variant="medium" styles={boldStyle}>การตั้งค่า (Options)</Text>
+        
         <Toggle 
           label="Smart Ignore" 
           inlineLabel 
@@ -93,18 +113,35 @@ function App() {
           onText="On"
           offText="Off"
         />
-        <Text variant="small" styles={{ root: { color: '#666', marginTop: '-15px' } }}>
-          Safely skip numbers embedded in English words (e.g. spin9, 9arm), URLs, and emails.
+        <Text variant="small" styles={{ root: { color: '#666', marginTop: '-15px', marginLeft: '25px' } }}>
+          ข้ามเลขในคำอังกฤษ เช่น spin9, 9arm, www.site123.com
         </Text>
+
+        <Checkbox 
+          label="เปลี่ยนในส่วนหัว/ท้ายกระดาษ (Headers/Footers)" 
+          checked={includeHF} 
+          onChange={(_, checked) => setIncludeHF(!!checked)} 
+        />
+
+        <Checkbox 
+          label="แปลงเลขลำดับอัตโนมัติเป็นข้อความ (Flatten Auto-lists)" 
+          checked={flattenLists} 
+          onChange={(_, checked) => setFlattenLists(!!checked)} 
+        />
+        <Text variant="small" styles={{ root: { color: '#666', marginTop: '-10px', marginLeft: '25px' } }}>
+          เปลี่ยนเลข 1.1 -> ๑.๑ แบบถาวร (ยกเลิกอัตโนมัติ)
+        </Text>
+
+        <Separator />
 
         <Stack tokens={{ childrenGap: 10 }}>
           <PrimaryButton 
-            text="Convert Entire Document" 
+            text="แปลงทั้งเอกสาร" 
             onClick={handleConvertDocument} 
             iconProps={{ iconName: 'Document' }}
           />
           <DefaultButton 
-            text="Convert Selection" 
+            text="แปลงเฉพาะที่เลือก" 
             onClick={handleConvertSelection} 
             iconProps={{ iconName: 'SingleColumn' }}
           />
@@ -113,9 +150,8 @@ function App() {
         {status && (
           <MessageBar
             messageBarType={status.type}
-            isMultiline={false}
+            isMultiline={true}
             onDismiss={() => setStatus(null)}
-            dismissButtonAriaLabel="Close"
           >
             {status.message}
           </MessageBar>
@@ -123,8 +159,8 @@ function App() {
 
         <Separator />
         
-        <Text variant="small">
-          Built for Microsoft Word Web Add-in
+        <Text variant="small" styles={{ root: { textAlign: 'center', color: '#a19f9d' } }}>
+          Professional Arabic to Thai Numeral Tool
         </Text>
       </Stack>
     </ThemeProvider>

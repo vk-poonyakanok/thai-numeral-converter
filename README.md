@@ -1,59 +1,38 @@
-# Thai Numeral Converter Word Add-in
+# IT๙ Converter (Word Add-in)
 
-A modern MS Word Web Add-in built with React + TypeScript to convert Arabic numerals to Thai numerals. Features a "Smart Ignore" algorithm to safely skip numbers embedded in English words, URLs, and email addresses (e.g., `spin9`, `9arm`, `www.site123.com`).
+เครื่องมือแปลงเลขไทยระดับมืออาชีพสำหรับ Microsoft Word ที่มาพร้อมกับระบบ "Smart Ignore" เพื่อความปลอดภัยในการใช้งานร่วมกับเอกสารที่มีภาษาอังกฤษและ URL
 
-## Features
-- **Convert Entire Document**: Scans the whole document body and converts all valid Arabic numerals.
-- **Convert Selection**: Only converts numerals within the highlighted text.
-- **Smart Ignore**: Intelligent detection to avoid converting numerals that are part of English text, websites, or emails.
-- **Formatting Preservation**: Replaces only the numerals, keeping your fonts, colors, and styles intact.
+## ฟีเจอร์หลัก (Features)
+- **Smart Ignore (ข้ามคำอังกฤษอัตโนมัติ)**: ระบบจะข้ามตัวเลขที่อยู่ในคำภาษาอังกฤษ (เช่น spin9, iPhone 15) และ URL/Email โดยอัตโนมัติ
+- **Deep Search**: รองรับการแปลงตัวเลขในทุกส่วนของเอกสาร:
+  - เนื้อหาหลัก (Body)
+  - กล่องข้อความและรูปร่าง (Shapes & Textboxes)
+  - ส่วนหัวและท้ายกระดาษ (Headers & Footers)
+  - เลขหน้าและคำบรรยายภาพ (Fields & Page Numbers)
+- **List Flattening (แช่แข็งลำดับรายการ)**: แปลงเลขลำดับอัตโนมัติ (1.1, 1.2) ให้เป็นข้อความเลขไทย (๑.๑, ๑.๒) แบบถาวร
+- **Auto-Date Formatter**: แปลงวันที่ภาษาอังกฤษ (ค.ศ.) เป็นวันที่ไทย (พ.ศ.) พร้อมเลขไทยโดยอัตโนมัติ (เช่น 5 May 2024 -> ๕ พฤษภาคม ๒๕๖๗)
+- **Formatting Preservation**: รักษาฟอนต์ สี และขนาดดั้งเดิมไว้ครบถ้วน
 
-## Tech Stack
-- **Framework**: React 19 + TypeScript (Vite)
-- **UI System**: Microsoft Fluent UI React
-- **Core API**: Word JavaScript API (Office.js)
+## วิธีการใช้งาน (How to Use)
 
-## Getting Started
+### สำหรับ Word Desktop (Mac/Windows)
+1. เปิดโปรแกรม Word
+2. ไปที่แถบ **แทรก (Insert)** > **Add-ins (Add-ins)**
+3. เลือก **My Add-ins (Add-ins ของฉัน)**
+4. เลือกหัวข้อ **DEVELOPER ADD-INS**
+5. เลือก **IT๙ Converter** แล้วกด **เพิ่ม (Add)**
+6. ปุ่มจะปรากฏที่แถบ **หน้าแรก (Home)** ทางด้านขวาสุด
 
-### Prerequisites
-- Node.js (v18+)
-- Microsoft Word (Web or Desktop)
+### สำหรับ Word Online (word.new)
+1. ไปที่แถบ **หน้าแรก (Home)** > **Add-ins** > **More Add-ins**
+2. เลือก **My Add-ins** > **Upload My Add-in**
+3. อัปโหลดไฟล์ `manifest.xml` จากเครื่องของคุณ
 
-### Local Development
+## การตั้งค่า
+- **Smart Ignore**: เปิดไว้เสมอเพื่อป้องกันการแปลงเลขใน URL หรือชื่อเฉพาะภาษาอังกฤษ
+- **Include Headers/Footers**: ติ๊กถูกหากต้องการให้แปลงเลขหน้าและข้อความในหัวกระดาษด้วย
+- **Flatten Auto-lists**: ติ๊กถูกหากต้องการยกเลิกเลขลำดับอัตโนมัติและเปลี่ยนเป็นข้อความเลขไทยถาวร
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/vitchakorn/thai-numeral-converter.git
-   cd thai-numeral-converter
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Start the development server:**
-   ```bash
-   npm run dev
-   ```
-   The add-in will be served at `https://localhost:5173/` (using self-signed certificates).
-
-### Sideloading the Add-in
-
-#### Word on the Web
-1. Open a document in Word on the Web.
-2. Go to **Insert** -> **Add-ins**.
-3. Select **Manage My Add-ins** -> **Upload My Add-in**.
-4. Upload the `manifest.xml` file located in the project root.
-
-#### Word on Desktop (Mac/Windows)
-Please refer to the [official Microsoft documentation](https://learn.microsoft.com/en-us/office/dev/add-ins/testing/sideload-office-add-ins-for-testing) for your specific operating system.
-
-## Project Structure
-- `manifest.xml`: The Office Add-in manifest file.
-- `src/converter.ts`: Core conversion logic using Office.js.
-- `src/App.tsx`: Task pane UI built with Fluent UI.
-- `src/test-converter.ts`: Offline test suite for the conversion logic.
-
-## License
-MIT
+---
+**พัฒนาโดย:** Vitchakorn Poonyakanok (IT๙)
+**เวอร์ชัน:** 1.10.0
