@@ -21,7 +21,7 @@ export function convertText(text: string, useSmartIgnore: boolean): string {
   let processedText = text;
   if (useSmartIgnore) {
     const dateRegex = /\b(\d{1,2})?\s?(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s?(\d{1,2})?,?\s(20\d{2})\b/gi;
-    processedText = processedText.replace(dateRegex, (match, d1, month, d2, year) => {
+    processedText = processedText.replace(dateRegex, (_, d1, month, d2, year) => {
       const thaiMonth = MONTHS_MAP[month] || month;
       const beYear = parseInt(year) + 543;
       const day = d1 || d2 || "";
