@@ -85,7 +85,7 @@ function App() {
           <Text styles={logoStyle}>IT๙</Text>
           <Stack>
             <Text variant="xxLarge" styles={boldStyle}>Converter</Text>
-            <Text variant="small" styles={{ root: { color: '#605e5c', marginTop: '-5px' } }}>v1.21.0</Text>
+            <Text variant="small" styles={{ root: { color: '#605e5c', marginTop: '-5px' } }}>v1.22.0</Text>
           </Stack>
         </Stack>
         
@@ -120,7 +120,7 @@ function App() {
             disabled={isProcessing}
           />
           <PrimaryButton 
-            text="แปลงส่วนอื่นๆ (หัว/ท้าย, กล่องข้อความ, ลำดับ)" 
+            text="แปลงรวมเลขหน้าและเลขหัวข้อแบบ Flatten" 
             onClick={() => handleAction(() => flattenAdvancedElements(useSmartIgnore))} 
             iconProps={{ iconName: 'FullWidth' }}
             disabled={isProcessing}
