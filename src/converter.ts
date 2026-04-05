@@ -77,15 +77,16 @@ async function processAllDocumentParts(context: Word.RequestContext, useSmartIgn
 
   // 2. Process Shapes (Textboxes)
   const shapes = body.shapes;
-  // Load textFrame and the nested textRange
-  shapes.load("items/textFrame/textRange");
+  shapes.load("items");
   await context.sync();
 
   for (let i = 0; i < shapes.items.length; i++) {
     const shape = shapes.items[i];
-    if (shape.textFrame && shape.textFrame.hasText) {
-      const shapeRange = shape.textFrame.textRange;
-      await processRange(shapeRange, useSmartIgnore, context);
+    // Word.Shape has a body property for textboxes
+    try {
+      await processRange(shape.body.getRange(), useSmartIgnore, context);
+    } catch (e) {
+      // Ignore shapes that don't have a body or text
     }
   }
 
@@ -107,7 +108,11 @@ async function processAllDocumentParts(context: Word.RequestContext, useSmartIgn
     ];
 
     for (const part of parts) {
-      await processRange(part.getRange(), useSmartIgnore, context);
+      try {
+        await processRange(part.getRange(), useSmartIgnore, context);
+      } catch (e) {
+        // Some headers/footers might not exist
+      }
     }
   }
 }
