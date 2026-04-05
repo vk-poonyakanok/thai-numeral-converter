@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0" xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="TaskPaneApp">
+  <Id>530C19C2-1770-4B3D-9785-83F54B6AB780</Id>
+  <Version>1.2.0.0</Version>
+  <ProviderName>Thai Numeral Converter</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="Thai Numeral Converter" />
+  <Description DefaultValue="Convert Arabic numerals to Thai numerals with Smart Ignore logic." />
+  <IconUrl DefaultValue="https://vitchakorn.github.io/thai-numeral-converter/vite.svg" />
+  <HighResolutionIconUrl DefaultValue="https://vitchakorn.github.io/thai-numeral-converter/vite.svg" />
+  <SupportUrl DefaultValue="https://www.contoso.com/help" />
+  <AppDomains>
+    <AppDomain>https://vitchakorn.github.io</AppDomain>
+  </AppDomains>
+  <Hosts>
+    <Host Name="Document" />
+  </Hosts>
+  <DefaultSettings>
+    <SourceLocation DefaultValue="https://vitchakorn.github.io/thai-numeral-converter/" />
+  </DefaultSettings>
+  <Permissions>ReadWriteDocument</Permissions>
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Hosts>
+      <Host xsi:type="Document">
+        <DesktopFormFactor>
+          <GetStarted>
+            <Title DefaultValue="Thai Numeral Converter" />
+            <Description DefaultValue="Open the Thai Numeral Converter task pane." />
+            <LearnMoreUrl DefaultValue="https://www.contoso.com/help" />
+          </GetStarted>
+          <FunctionFile Resid="Commands.Url" />
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <OfficeTab id="TabHome">
+              <Group id="Group1">
+                <Label DefaultValue="Thai Numerals" />
+                <Control xsi:type="Button" id="TaskpaneButton">
+                  <Label DefaultValue="Show Task Pane" />
+                  <Supertip>
+                    <Title DefaultValue="Show Task Pane" />
+                    <Description DefaultValue="Open the Thai Numeral Converter task pane." />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.16x16" />
+                    <bt:Image size="32" resid="Icon.32x32" />
+                    <bt:Image size="80" resid="Icon.80x80" />
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>ButtonId1</TaskpaneId>
+                    <SourceLocation resid="Taskpane.Url" />
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+    <Resources>
+      <bt:Images>
+        <bt:Image id="Icon.16x16" DefaultValue="https://vitchakorn.github.io/thai-numeral-converter/vite.svg" />
+        <bt:Image id="Icon.32x32" DefaultValue="https://vitchakorn.github.io/thai-numeral-converter/vite.svg" />
+        <bt:Image id="Icon.80x80" DefaultValue="https://vitchakorn.github.io/thai-numeral-converter/vite.svg" />
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="Commands.Url" DefaultValue="https://vitchakorn.github.io/thai-numeral-converter/commands.html" />
+        <bt:Url id="Taskpane.Url" DefaultValue="https://vitchakorn.github.io/thai-numeral-converter/" />
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="Group1.Label" DefaultValue="Thai Numerals" />
+        <bt:String id="TaskpaneButton.Label" DefaultValue="Show Task Pane" />
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="TaskpaneButton.Tooltip" DefaultValue="Open the Thai Numeral Converter task pane." />
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>
