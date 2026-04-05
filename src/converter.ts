@@ -66,56 +66,6 @@ async function processRange(range: Word.Range, useSmartIgnore: boolean, context:
 }
 
 /**
- * Aggressive flattening and processing for a body object.
- */
-async function processDeepBodyFlatten(body: Word.Body, useSmartIgnore: boolean, context: Word.RequestContext) {
-  if (!body) return;
-
-  // 1. Unlink all fields (Turns Page Numbers and Captions into static text)
-  try {
-    const fields = body.fields;
-    fields.load("items");
-    await context.sync();
-    for (let i = 0; i < fields.items.length; i++) {
-      try {
-        fields.items[i].unlink();
-      } catch (e) {}
-    }
-    await context.sync();
-  } catch (e) {}
-
-  // 2. Process all text in this body
-  try {
-    await processRange(body.getRange(), useSmartIgnore, context);
-  } catch (e) {}
-
-  // 3. Shapes (Textboxes)
-  try {
-    const shapes = body.shapes;
-    shapes.load("items");
-    await context.sync();
-    for (let i = 0; i < shapes.items.length; i++) {
-      const shape = shapes.items[i];
-      // Try body
-      try {
-        const shapeBody = (shape as any).body;
-        await processDeepBodyFlatten(shapeBody, useSmartIgnore, context);
-      } catch (e) {
-        // Try textFrame fallback
-        try {
-            const tFrame = (shape as any).textFrame;
-            tFrame.load("hasText");
-            await context.sync();
-            if (tFrame.hasText) {
-                await processRange(tFrame.textRange, useSmartIgnore, context);
-            }
-        } catch (innerErr) {}
-      }
-    }
-  } catch (e) {}
-}
-
-/**
  * Main Conversion Functions
  */
 export async function convertSelection(useSmartIgnore: boolean) {
@@ -134,19 +84,94 @@ export async function convertMainBody(useSmartIgnore: boolean) {
 }
 
 /**
- * The "Ultimate" Flattening Button Logic
+ * Manual Robust Processing for Special Elements
  */
+async function processDeepBodyManual(body: Word.Body, useSmartIgnore: boolean, context: Word.RequestContext) {
+  if (!body) return;
+
+  // 1. Manual List Flattening (๑.๑) - Paragraph by Paragraph
+  try {
+    const paragraphs = body.paragraphs;
+    paragraphs.load("items/isListItem,items/listItem");
+    await context.sync();
+
+    for (let i = 0; i < paragraphs.items.length; i++) {
+      const para = paragraphs.items[i];
+      if (para.isListItem && para.listItem) {
+        try {
+          para.listItem.load("listString");
+          await context.sync();
+          const listLabel = para.listItem.listString;
+          if (listLabel) {
+            const thaiLabel = convertText(listLabel, false);
+            // Manually detach and insert to guarantee flattening
+            para.detachFromList();
+            para.insertText(thaiLabel + " ", "Start");
+          }
+        } catch (e) {}
+      }
+    }
+  } catch (e) {}
+
+  // 2. Process regular text
+  try {
+    await processRange(body.getRange(), useSmartIgnore, context);
+  } catch (e) {}
+
+  // 3. Process Fields (Page Numbers, Captions) - Manual Replacement
+  try {
+    const fields = body.fields;
+    fields.load("items/result");
+    await context.sync();
+    for (let i = 0; i < fields.items.length; i++) {
+      const field = fields.items[i];
+      try {
+        const resRange = field.result;
+        resRange.load("text");
+        await context.sync();
+        if (resRange.text) {
+          const originalText = resRange.text;
+          const thaiText = convertText(originalText, useSmartIgnore);
+          if (originalText !== thaiText) {
+            // Replacing result often unlinks field in Office.js
+            resRange.insertText(thaiText, "Replace");
+          }
+        }
+      } catch (e) {}
+    }
+  } catch (e) {}
+
+  // 4. Shapes (Textboxes) - Multi-path access
+  try {
+    const shapes = body.shapes;
+    shapes.load("items");
+    await context.sync();
+    for (let i = 0; i < shapes.items.length; i++) {
+      const shape = shapes.items[i];
+      // Path A: Body
+      try {
+        const sBody = (shape as any).body;
+        sBody.load("type");
+        await context.sync();
+        await processDeepBodyManual(sBody, useSmartIgnore, context);
+      } catch (e) {
+        // Path B: TextFrame
+        try {
+          const tFrame = (shape as any).textFrame;
+          tFrame.load("hasText");
+          await context.sync();
+          if (tFrame.hasText) {
+            await processRange(tFrame.textRange, useSmartIgnore, context);
+          }
+        } catch (err) {}
+      }
+    }
+  } catch (e) {}
+}
+
 export async function flattenAdvancedElements(useSmartIgnore: boolean) {
   await Word.run(async (context: Word.RequestContext) => {
-    // 1. GLOBAL LIST FLATTENING (The VBA "ActiveDocument.ConvertNumbersToText" equivalent)
-    try {
-        (context.document as any).convertNumbersToText("AllNumbers");
-        await context.sync();
-    } catch (e) {
-        // Fallback for older API: Manually detach lists in the main body loop below
-    }
-
-    // 2. Process Headers/Footers
+    // 1. Process all Sections (Headers/Footers)
     const sections = context.document.sections;
     sections.load("items");
     await context.sync();
@@ -159,19 +184,13 @@ export async function flattenAdvancedElements(useSmartIgnore: boolean) {
         Word.HeaderFooterType.evenPages
       ];
       for (const type of hfTypes) {
-        try {
-          const header = section.getHeader(type);
-          await processDeepBodyFlatten(header, useSmartIgnore, context);
-        } catch (e) {}
-        try {
-          const footer = section.getFooter(type);
-          await processDeepBodyFlatten(footer, useSmartIgnore, context);
-        } catch (e) {}
+        try { await processDeepBodyManual(section.getHeader(type), useSmartIgnore, context); } catch (e) {}
+        try { await processDeepBodyManual(section.getFooter(type), useSmartIgnore, context); } catch (e) {}
       }
     }
 
-    // 3. Process Main body (for shapes and nested elements)
-    await processDeepBodyFlatten(context.document.body, useSmartIgnore, context);
+    // 2. Process main document body
+    await processDeepBodyManual(context.document.body, useSmartIgnore, context);
     
     await context.sync();
   });

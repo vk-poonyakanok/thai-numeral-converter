@@ -85,7 +85,7 @@ function App() {
           <Text styles={logoStyle}>IT๙</Text>
           <Stack>
             <Text variant="xxLarge" styles={boldStyle}>Converter</Text>
-            <Text variant="small" styles={{ root: { color: '#605e5c', marginTop: '-5px' } }}>v1.19.0</Text>
+            <Text variant="small" styles={{ root: { color: '#605e5c', marginTop: '-5px' } }}>v1.20.0</Text>
           </Stack>
         </Stack>
         
