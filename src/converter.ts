@@ -55,6 +55,8 @@ async function processRange(range: Word.Range, useSmartIgnore: boolean, context:
     await context.sync();
     
     const originalFullText = range.text;
+    if (!originalFullText) return;
+
     const dateConvertedText = convertText(originalFullText, useSmartIgnore);
     
     if (originalFullText !== dateConvertedText) {
@@ -87,35 +89,15 @@ async function processRange(range: Word.Range, useSmartIgnore: boolean, context:
 }
 
 /**
- * Thoroughly processes a Body object, including its text, nested shapes, and fields.
+ * Processes a body object for text, shapes, and fields.
  */
-async function processBodyExhaustive(body: Word.Body, useSmartIgnore: boolean, context: Word.RequestContext, flattenLists: boolean) {
+async function processBodyExhaustive(body: Word.Body, useSmartIgnore: boolean, context: Word.RequestContext) {
   if (!body) return;
 
-  // 1. Process List Flattening
-  if (flattenLists) {
-    try {
-      const paragraphs = body.paragraphs;
-      paragraphs.load("items/isListItem,items/listItem/listString");
-      await context.sync();
-
-      for (let i = 0; i < paragraphs.items.length; i++) {
-        const para = paragraphs.items[i];
-        if (para.isListItem) {
-          const listLabel = para.listItem.listString;
-          const thaiLabel = convertText(listLabel, false);
-          // Detach from automatic list and insert manual Thai label
-          para.detachFromList();
-          para.insertText(thaiLabel + " ", "Start");
-        }
-      }
-    } catch (e) {}
-  }
-
-  // 2. Process the main text content
+  // 1. Main text content
   await processRange(body.getRange(), useSmartIgnore, context);
 
-  // 3. Process all shapes (like Textboxes)
+  // 2. Shapes (Textboxes)
   try {
     const shapes = body.shapes;
     shapes.load("items/body");
@@ -124,12 +106,12 @@ async function processBodyExhaustive(body: Word.Body, useSmartIgnore: boolean, c
     for (let i = 0; i < shapes.items.length; i++) {
       const shape = shapes.items[i];
       if (shape.body) {
-        await processBodyExhaustive(shape.body, useSmartIgnore, context, flattenLists);
+        await processBodyExhaustive(shape.body, useSmartIgnore, context);
       }
     }
   } catch (e) {}
 
-  // 4. Process all fields (Page Numbers, etc.)
+  // 3. Fields (Captions, etc. - Note: page numbers handled at section level)
   try {
     const fields = body.fields;
     fields.load("items/result");
@@ -156,19 +138,51 @@ export async function convertSelection(useSmartIgnore: boolean) {
 }
 
 /**
- * Converts numerals in the entire document.
+ * Converts numerals in the entire document with dynamic styling.
  */
-export async function convertDocument(useSmartIgnore: boolean, includeHF: boolean, flattenLists: boolean) {
+export async function convertDocument(useSmartIgnore: boolean, includeHF: boolean, dynamicLists: boolean, dynamicPageNumbers: boolean) {
   await Word.run(async (context: Word.RequestContext) => {
-    await processBodyExhaustive(context.document.body, useSmartIgnore, context, flattenLists);
+    // 1. Process Main Body
+    await processBodyExhaustive(context.document.body, useSmartIgnore, context);
 
-    if (includeHF) {
-      const sections = context.document.sections;
-      sections.load("items");
+    // 2. Handle Dynamic Lists (๑.๑) - Non-destructive style change
+    if (dynamicLists) {
+      const body = context.document.body;
+      const paragraphs = body.paragraphs;
+      // Load list template and levels
+      paragraphs.load("items/list/listTemplate/listLevels");
       await context.sync();
 
-      for (let i = 0; i < sections.items.length; i++) {
-        const section = sections.items[i];
+      for (let i = 0; i < paragraphs.items.length; i++) {
+        const para = paragraphs.items[i];
+        if (para.list) {
+          const levels = para.list.listTemplate.listLevels;
+          levels.load("items");
+          await context.sync();
+          
+          for (let j = 0; j < levels.items.length; j++) {
+            // Change style to ThaiArabic (๑, ๒, ๓)
+            levels.items[j].numberStyle = "ThaiArabic" as any;
+          }
+        }
+      }
+    }
+
+    // 3. Handle Page Numbers & Sections (Dynamic counters)
+    const sections = context.document.sections;
+    sections.load("items");
+    await context.sync();
+
+    for (let i = 0; i < sections.items.length; i++) {
+      const section = sections.items[i];
+      
+      // Fix Page Numbers: Use built-in dynamic numbering style
+      if (dynamicPageNumbers) {
+        section.pageNumbering.numberStyle = "ThaiArabic" as any;
+      }
+
+      // Process Headers/Footers
+      if (includeHF) {
         const hfTypes: Word.HeaderFooterType[] = [
             Word.HeaderFooterType.primary,
             Word.HeaderFooterType.firstPage,
@@ -177,8 +191,10 @@ export async function convertDocument(useSmartIgnore: boolean, includeHF: boolea
         
         for (const type of hfTypes) {
           try {
-            await processBodyExhaustive(section.getHeader(type), useSmartIgnore, context, flattenLists);
-            await processBodyExhaustive(section.getFooter(type), useSmartIgnore, context, flattenLists);
+            const hf = section.getHeader(type);
+            await processBodyExhaustive(hf, useSmartIgnore, context);
+            const ff = section.getFooter(type);
+            await processBodyExhaustive(ff, useSmartIgnore, context);
           } catch (e) {}
         }
       }

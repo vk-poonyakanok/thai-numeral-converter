@@ -61,7 +61,8 @@ const stackSpacing = { childrenGap: 15 };
 function App() {
   const [useSmartIgnore, setUseSmartIgnore] = useState(true);
   const [includeHF, setIncludeHF] = useState(true);
-  const [flattenLists, setFlattenLists] = useState(false);
+  const [dynamicLists, setDynamicLists] = useState(true);
+  const [dynamicPageNumbers, setDynamicPageNumbers] = useState(true);
   const [status, setStatus] = useState<{message: string, type: MessageBarType} | null>(null);
 
   const handleConvertSelection = async () => {
@@ -78,7 +79,7 @@ function App() {
   const handleConvertDocument = async () => {
     try {
       setStatus(null);
-      await convertDocument(useSmartIgnore, includeHF, flattenLists);
+      await convertDocument(useSmartIgnore, includeHF, dynamicLists, dynamicPageNumbers);
       setStatus({ message: "แปลงทั้งเอกสารเรียบร้อย!", type: MessageBarType.success });
     } catch (error: any) {
       console.error(error);
@@ -93,7 +94,7 @@ function App() {
           <Text styles={logoStyle}>IT๙</Text>
           <Stack>
             <Text variant="xxLarge" styles={boldStyle}>IT๙ Converter</Text>
-            <Text variant="small" styles={{ root: { color: '#605e5c', marginTop: '-5px' } }}>v1.10.0</Text>
+            <Text variant="small" styles={{ root: { color: '#605e5c', marginTop: '-5px' } }}>v1.12.0</Text>
           </Stack>
         </Stack>
         
@@ -124,13 +125,19 @@ function App() {
         />
 
         <Checkbox 
-          label="แปลงเลขลำดับอัตโนมัติเป็นข้อความ (Flatten Auto-lists)" 
-          checked={flattenLists} 
-          onChange={(_, checked) => setFlattenLists(!!checked)} 
+          label="แปลงเลขลำดับอัตโนมัติ (Dynamic Thai Lists ๑.๑)" 
+          checked={dynamicLists} 
+          onChange={(_, checked) => setDynamicLists(!!checked)} 
         />
         <Text variant="small" styles={{ root: { color: '#666', marginTop: '-10px', marginLeft: '25px' } }}>
-          เปลี่ยนเลข 1.1 {'->'} ๑.๑ แบบถาวร (ยกเลิกอัตโนมัติ)
+          เปลี่ยนเลข 1.1 {'->'} ๑.๑ แบบอัตโนมัติ (ไม่เสียฟอร์แมต)
         </Text>
+
+        <Checkbox 
+          label="แปลงเลขหน้า และสารบัญ (Page Numbers & TOC)" 
+          checked={dynamicPageNumbers} 
+          onChange={(_, checked) => setDynamicPageNumbers(!!checked)} 
+        />
 
         <Separator />
 
