@@ -12,7 +12,7 @@ import {
   MessageBar,
   MessageBarType
 } from '@fluentui/react';
-import { convertSelection, convertDocument } from './converter';
+import { convertSelection, convertMainBody, flattenAdvancedElements } from './converter';
 import './App.css';
 
 const myTheme = createTheme({
@@ -61,22 +61,11 @@ function App() {
   const [useSmartIgnore, setUseSmartIgnore] = useState(true);
   const [status, setStatus] = useState<{message: string, type: MessageBarType} | null>(null);
 
-  const handleConvertSelection = async () => {
+  const handleAction = async (actionFn: () => Promise<void>) => {
     try {
       setStatus(null);
-      await convertSelection(useSmartIgnore);
-      setStatus({ message: "แปลงเฉพาะที่เลือกเรียบร้อย!", type: MessageBarType.success });
-    } catch (error: any) {
-      console.error(error);
-      setStatus({ message: `Error: ${error.message || "ล้มเหลว"}`, type: MessageBarType.error });
-    }
-  };
-
-  const handleConvertDocument = async () => {
-    try {
-      setStatus(null);
-      await convertDocument(useSmartIgnore);
-      setStatus({ message: "แปลงทั้งเอกสารเรียบร้อย!", type: MessageBarType.success });
+      await actionFn();
+      setStatus({ message: "ดำเนินการเรียบร้อย!", type: MessageBarType.success });
     } catch (error: any) {
       console.error(error);
       setStatus({ message: `Error: ${error.message || "ล้มเหลว"}`, type: MessageBarType.error });
@@ -89,13 +78,13 @@ function App() {
         <Stack horizontal verticalAlign="center">
           <Text styles={logoStyle}>IT๙</Text>
           <Stack>
-            <Text variant="xxLarge" styles={boldStyle}>IT๙ Converter</Text>
-            <Text variant="small" styles={{ root: { color: '#605e5c', marginTop: '-5px' } }}>v1.15.0</Text>
+            <Text variant="xxLarge" styles={boldStyle}>Converter</Text>
+            <Text variant="small" styles={{ root: { color: '#605e5c', marginTop: '-5px' } }}>v1.16.0</Text>
           </Stack>
         </Stack>
         
         <Text variant="medium">
-          เครื่องมือแปลงเลขไทยระดับมืออาชีพ พร้อมระบบข้ามคำภาษาอังกฤษและ URL อัตโนมัติ (แปลงครอบคลุมทั้งหัวกระดาษ ท้ายกระดาษ กล่องข้อความ เลขหน้า และลำดับอัตโนมัติ)
+          เครื่องมือแปลงเลขไทย พร้อมระบบข้ามคำภาษาอังกฤษและ URL อัตโนมัติ
         </Text>
 
         <Separator />
@@ -118,13 +107,18 @@ function App() {
 
         <Stack tokens={{ childrenGap: 10 }}>
           <PrimaryButton 
-            text="แปลงทั้งเอกสาร" 
-            onClick={handleConvertDocument} 
+            text="แปลงเนื้อหาหลัก" 
+            onClick={() => handleAction(() => convertMainBody(useSmartIgnore))} 
             iconProps={{ iconName: 'Document' }}
+          />
+          <PrimaryButton 
+            text="แปลงส่วนอื่นๆ (หัว/ท้าย, กล่องข้อความ, ลำดับ)" 
+            onClick={() => handleAction(() => flattenAdvancedElements(useSmartIgnore))} 
+            iconProps={{ iconName: 'FullWidth' }}
           />
           <DefaultButton 
             text="แปลงเฉพาะที่เลือก" 
-            onClick={handleConvertSelection} 
+            onClick={() => handleAction(() => convertSelection(useSmartIgnore))} 
             iconProps={{ iconName: 'SingleColumn' }}
           />
         </Stack>
@@ -142,7 +136,7 @@ function App() {
         <Separator />
         
         <Text variant="small" styles={{ root: { textAlign: 'center', color: '#a19f9d' } }}>
-          Professional Arabic to Thai Numeral Tool
+          Arabic to Thai Numeral Tool
         </Text>
       </Stack>
     </ThemeProvider>
