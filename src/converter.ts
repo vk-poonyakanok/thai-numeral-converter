@@ -20,11 +20,11 @@ export const ARABIC_TO_THAI_MAP: { [key: string]: string } = {
 export function convertText(text: string, useSmartIgnore: boolean): string {
   if (useSmartIgnore) {
     const smartRegex = /(?<![a-zA-Z0-9])[0-9]+(?![a-zA-Z0-9])/g;
-    return text.replace(smartRegex, (match) => {
-      return match.split('').map(char => ARABIC_TO_THAI_MAP[char] || char).join('');
+    return text.replace(smartRegex, (match: string) => {
+      return match.split('').map((char: string) => ARABIC_TO_THAI_MAP[char] || char).join('');
     });
   } else {
-    return text.replace(/[0-9]/g, (match) => ARABIC_TO_THAI_MAP[match] || match);
+    return text.replace(/[0-9]/g, (match: string) => ARABIC_TO_THAI_MAP[match] || match);
   }
 }
 
@@ -73,7 +73,7 @@ async function processRange(range: Word.Range, useSmartIgnore: boolean, context:
     await context.sync();
 
     const originalText = numRange.text;
-    const thaiText = originalText.split('').map(char => ARABIC_TO_THAI_MAP[char] || char).join('');
+    const thaiText = originalText.split('').map((char: string) => ARABIC_TO_THAI_MAP[char] || char).join('');
     
     if (originalText !== thaiText) {
       numRange.insertText(thaiText, "Replace");
@@ -85,7 +85,7 @@ async function processRange(range: Word.Range, useSmartIgnore: boolean, context:
  * Converts numerals in the current selection.
  */
 export async function convertSelection(useSmartIgnore: boolean) {
-  await Word.run(async (context) => {
+  await Word.run(async (context: Word.RequestContext) => {
     const selection = context.document.getSelection();
     await processRange(selection, useSmartIgnore, context);
     await context.sync();
@@ -96,7 +96,7 @@ export async function convertSelection(useSmartIgnore: boolean) {
  * Converts numerals in the entire document body.
  */
 export async function convertDocument(useSmartIgnore: boolean) {
-  await Word.run(async (context) => {
+  await Word.run(async (context: Word.RequestContext) => {
     const body = context.document.body;
     await processRange(body, useSmartIgnore, context);
     await context.sync();
