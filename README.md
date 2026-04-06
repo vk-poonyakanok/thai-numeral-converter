@@ -17,7 +17,7 @@
 1. **Copy ไฟล์ Manifest**: คัดลอกไฟล์ `manifest.xml` จากโฟลเดอร์โปรเจกต์ไปไว้ที่:
    `~/Library/Containers/com.microsoft.Word/Data/Documents/wef/manifest.xml`
    *(หากไม่มีโฟลเดอร์ `wef` ให้สร้างขึ้นมาใหม่)*
-2. **Restart Word**: ปิดโปรแกรม Word แบบสนิท (Cmd + Q) แล้วเปิดใหม่
+2. **Restart Word**: ปิดโปรแกรม Word (Cmd + Q) แล้วเปิดใหม่
 3. **เปิดใช้งาน Add-in**:
    - ไปที่แถบ **หน้าแรก (Home)**
    - มองหาปุ่ม **Add-ins** ทางด้านขวา (หรือไปที่ **Insert** > **Add-ins** > **My Add-ins**)
