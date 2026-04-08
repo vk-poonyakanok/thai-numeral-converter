@@ -162,16 +162,16 @@ function App() {
         {!isOffice && (
           <Stack tokens={{ childrenGap: 10 }} styles={{ root: { backgroundColor: '#f3f2f1', padding: '15px', borderRadius: '4px', border: '1px dashed #d2d0ce', marginTop: '10px' } }}>
             <Text variant="small" styles={{ root: { fontWeight: FontWeights.semibold, textAlign: 'center' } }}>
-              เปิดใน Browser? ติดตั้งเพื่อใช้ใน Word
+              IT๙ Converter เป็นส่วนเสริมสำหรับ Microsoft Word
             </Text>
-            <DefaultButton 
-              text="ดาวน์โหลดไฟล์ manifest.xml" 
-              iconProps={{ iconName: 'Download' }}
-              href="https://vk-poonyakanok.github.io/thai-numeral-converter/manifest.xml"
+            <PrimaryButton 
+              text="ดูวิธีการติดตั้งบน GitHub" 
+              iconProps={{ iconName: 'ReadingMode' }}
+              href="https://github.com/vk-poonyakanok/thai-numeral-converter#วิธีการใช้งานสำหรับ-macos-how-to-use"
               target="_blank"
             />
             <Text variant="xSmall" styles={{ root: { textAlign: 'center', color: '#605e5c' } }}>
-              คัดลอกไฟล์นี้ไปไว้ในโฟลเดอร์ wef ของ Word เพื่อเริ่มใช้งาน
+              เครื่องมือนี้ออกแบบมาเพื่อใช้งานใน Word กรุณาดูวิธีติดตั้งเพื่อเริ่มต้นใช้งาน
             </Text>
           </Stack>
         )}
