@@ -10,6 +10,9 @@
   - ลำดับรายการอัตโนมัติ (Auto-lists 1.1 -> ๑.๑)
 - **Formatting Preservation**: รักษาฟอนต์ สี และขนาดดั้งเดิมไว้ครบถ้วน
 
+## 📥 ดาวน์โหลด (One-Click Download)
+[**คลิกที่นี่เพื่อดาวน์โหลดไฟล์ manifest.xml**](https://vk-poonyakanok.github.io/thai-numeral-converter/manifest.xml)
+
 ## เอกสารทางกฎหมาย (Legal Documents)
 สำหรับการตรวจสอบโดย Microsoft Partner Center:
 - **Privacy Policy**: [Link](https://vk-poonyakanok.github.io/thai-numeral-converter/privacy.html)
@@ -19,7 +22,7 @@
 
 เพื่อให้ปุ่ม **IT๙** ปรากฏในโปรแกรม Word บน Mac ให้ทำตามขั้นตอนดังนี้:
 
-1. **Copy ไฟล์ Manifest**: คัดลอกไฟล์ `manifest.xml` จากโฟลเดอร์โปรเจกต์ไปไว้ที่:
+1. **Download & Copy**: [ดาวน์โหลดไฟล์ `manifest.xml`](https://vk-poonyakanok.github.io/thai-numeral-converter/manifest.xml) แล้วคัดลอกไปไว้ที่:
    `~/Library/Containers/com.microsoft.Word/Data/Documents/wef/manifest.xml`
    *(หากไม่มีโฟลเดอร์ `wef` ให้สร้างขึ้นมาใหม่)*
 2. **Restart Word**: ปิดโปรแกรม Word (Cmd + Q) แล้วเปิดใหม่

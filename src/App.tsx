@@ -64,8 +64,16 @@ function App() {
   const [useSmartIgnore, setUseSmartIgnore] = useState(true);
   const [status, setStatus] = useState<{message: string, type: MessageBarType} | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isOffice, setIsOffice] = useState(true);
 
-  const handleAction = async (actionFn: () => Promise<void>) => {
+  useState(() => {
+    // Check if we are running inside Office
+    if (typeof Office !== 'undefined' && !Office.context?.host) {
+      setIsOffice(false);
+    }
+  });
+
+  const handleAction = async (action: () => Promise<void>) => {
     try {
       setStatus(null);
       setIsProcessing(true);
@@ -149,6 +157,23 @@ function App() {
           >
             {status.message}
           </MessageBar>
+        )}
+
+        {!isOffice && (
+          <Stack tokens={{ childrenGap: 10 }} styles={{ root: { backgroundColor: '#f3f2f1', padding: '15px', borderRadius: '4px', border: '1px dashed #d2d0ce', marginTop: '10px' } }}>
+            <Text variant="small" styles={{ root: { fontWeight: FontWeights.semibold, textAlign: 'center' } }}>
+              เปิดใน Browser? ติดตั้งเพื่อใช้ใน Word
+            </Text>
+            <DefaultButton 
+              text="ดาวน์โหลดไฟล์ manifest.xml" 
+              iconProps={{ iconName: 'Download' }}
+              href="https://vk-poonyakanok.github.io/thai-numeral-converter/manifest.xml"
+              target="_blank"
+            />
+            <Text variant="xSmall" styles={{ root: { textAlign: 'center', color: '#605e5c' } }}>
+              คัดลอกไฟล์นี้ไปไว้ในโฟลเดอร์ wef ของ Word เพื่อเริ่มใช้งาน
+            </Text>
+          </Stack>
         )}
 
         <Separator />
