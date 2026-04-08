@@ -6,8 +6,8 @@
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="IT๙ Converter" />
   <Description DefaultValue="Professional tool to convert Arabic numerals to Thai numerals with Smart Ignore logic." />
-  <IconUrl DefaultValue="https://vk-poonyakanok.github.io/thai-numeral-converter/icon.png" />
-  <HighResolutionIconUrl DefaultValue="https://vk-poonyakanok.github.io/thai-numeral-converter/icon.png" />
+  <IconUrl DefaultValue="https://vk-poonyakanok.github.io/thai-numeral-converter/icon-32.png" />
+  <HighResolutionIconUrl DefaultValue="https://vk-poonyakanok.github.io/thai-numeral-converter/icon-64.png" />
   <SupportUrl DefaultValue="https://github.com/vk-poonyakanok/thai-numeral-converter" />
   <AppDomains>
     <AppDomain>https://vk-poonyakanok.github.io</AppDomain>
@@ -62,9 +62,9 @@
     </Hosts>
     <Resources>
       <bt:Images>
-        <bt:Image id="Icon.16x16" DefaultValue="https://vk-poonyakanok.github.io/thai-numeral-converter/icon.png" />
-        <bt:Image id="Icon.32x32" DefaultValue="https://vk-poonyakanok.github.io/thai-numeral-converter/icon.png" />
-        <bt:Image id="Icon.80x80" DefaultValue="https://vk-poonyakanok.github.io/thai-numeral-converter/icon.png" />
+        <bt:Image id="Icon.16x16" DefaultValue="https://vk-poonyakanok.github.io/thai-numeral-converter/icon-16.png" />
+        <bt:Image id="Icon.32x32" DefaultValue="https://vk-poonyakanok.github.io/thai-numeral-converter/icon-32.png" />
+        <bt:Image id="Icon.80x80" DefaultValue="https://vk-poonyakanok.github.io/thai-numeral-converter/icon-80.png" />
       </bt:Images>
       <bt:Urls>
         <bt:Url id="Commands.Url" DefaultValue="https://vk-poonyakanok.github.io/thai-numeral-converter/commands.html" />

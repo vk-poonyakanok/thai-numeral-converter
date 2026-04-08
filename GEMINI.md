@@ -13,6 +13,14 @@ This document contains foundational mandates and project-specific context for th
 - **Deployment**: Hosted on GitHub Pages at `https://vk-poonyakanok.github.io/thai-numeral-converter/`
 - **Sideloading Path (Mac)**: `~/Library/Containers/com.microsoft.Word/Data/Documents/wef/manifest.xml`
 
+## Assets & Icons
+- **Partner Center Compliance**: To pass Microsoft Partner Center validation, the following icons must be maintained in the `public/` directory and correctly referenced in `manifest.xml`:
+  - `icon-16.png` (16x16)
+  - `icon-32.png` (32x32)
+  - `icon-64.png` (64x64)
+  - `icon-80.png` (80x80)
+- **High Resolution**: Always use `icon-64.png` for the `HighResolutionIconUrl` in the manifest.
+
 ## Engineering Mandates
 - **Formatting Preservation**: Always use **Surgical Replacement** (searching for specific digit ranges using `range.search("[0-9]{1,}", ...)`) instead of replacing entire paragraphs. This ensures bold, italic, and colored text remains intact.
 - **Smart Ignore Logic**: Strictly maintain the regex `/(?<![a-zA-Z0-9])[0-9]+(?![a-zA-Z0-9])/g` to avoid converting numbers embedded in English words, URLs, or emails.
