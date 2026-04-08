@@ -181,12 +181,6 @@ function App() {
                 }
               }}
             />
-            <DefaultButton 
-              text="ดาวน์โหลด manifest.xml โดยตรง" 
-              iconProps={{ iconName: 'Download' }}
-              href="/thai-numeral-converter/manifest.xml"
-              download="manifest.xml"
-            />
             <Text variant="xSmall" styles={{ root: { textAlign: 'center', color: '#605e5c' } }}>
               เครื่องมือนี้ออกแบบมาเพื่อใช้งานใน Word กรุณาดูวิธีติดตั้งเพื่อเริ่มต้นใช้งาน
             </Text>
