@@ -22,4 +22,4 @@ IMPLEMENTATION_PLAN.md
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
+*.sw?manifest-local.xml
