@@ -12,7 +12,8 @@ import {
   MessageBar,
   MessageBarType,
   Spinner,
-  SpinnerSize
+  SpinnerSize,
+  Link
 } from '@fluentui/react';
 import { convertSelection, convertMainBody, flattenAdvancedElements } from './converter';
 import './App.css';
@@ -152,8 +153,17 @@ function App() {
 
         <Separator />
         
-        <Text variant="small" styles={{ root: { textAlign: 'center', color: '#a19f9d' } }}>
-          Arabic to Thai Numeral Tool
+        <Stack horizontal horizontalAlign="center" tokens={{ childrenGap: 15 }}>
+          <Link href="https://vk-poonyakanok.github.io/thai-numeral-converter/privacy.html" target="_blank" styles={{ root: { fontSize: '10px' } }}>
+            Privacy Policy
+          </Link>
+          <Link href="https://vk-poonyakanok.github.io/thai-numeral-converter/eula.html" target="_blank" styles={{ root: { fontSize: '10px' } }}>
+            Terms of Use
+          </Link>
+        </Stack>
+
+        <Text variant="small" styles={{ root: { textAlign: 'center', color: '#a19f9d', display: 'block', marginTop: '5px' } }}>
+          IT๙ Converter v1.22.0
         </Text>
       </Stack>
     </ThemeProvider>
