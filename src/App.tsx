@@ -164,11 +164,28 @@ function App() {
             <Text variant="small" styles={{ root: { fontWeight: FontWeights.semibold, textAlign: 'center' } }}>
               IT๙ Converter เป็นส่วนเสริมสำหรับ Microsoft Word
             </Text>
-            <PrimaryButton 
+            <DefaultButton 
               text="ดูวิธีการติดตั้งบน GitHub" 
               iconProps={{ iconName: 'ReadingMode' }}
               href="https://github.com/vk-poonyakanok/thai-numeral-converter#วิธีการใช้งานสำหรับ-macos-how-to-use"
               target="_blank"
+              styles={{ 
+                root: { 
+                  backgroundColor: '#fff4ce', 
+                  borderColor: '#fde79e',
+                  color: '#323130'
+                },
+                rootHovered: {
+                  backgroundColor: '#fde79e',
+                  borderColor: '#fcdb6d'
+                }
+              }}
+            />
+            <DefaultButton 
+              text="ดาวน์โหลด manifest.xml โดยตรง" 
+              iconProps={{ iconName: 'Download' }}
+              href="/thai-numeral-converter/manifest.xml"
+              download="manifest.xml"
             />
             <Text variant="xSmall" styles={{ root: { textAlign: 'center', color: '#605e5c' } }}>
               เครื่องมือนี้ออกแบบมาเพื่อใช้งานใน Word กรุณาดูวิธีติดตั้งเพื่อเริ่มต้นใช้งาน
