@@ -21,6 +21,10 @@ This document contains foundational mandates and project-specific context for th
   - `icon-80.png` (80x80)
 - **High Resolution**: Always use `icon-64.png` for the `HighResolutionIconUrl` in the manifest.
 
+## Compliance & Documentation
+- **Legal Pages**: Maintain `privacy.html` and `eula.html` in the `public/` directory.
+- **Screenshots**: Microsoft Partner Center screenshots must be exactly **1366 x 768 px** and under **1024 KB**. Use high-quality resizing (Lanczos filter) to ensure text readability.
+
 ## Engineering Mandates
 - **Formatting Preservation**: Always use **Surgical Replacement** (searching for specific digit ranges using `range.search("[0-9]{1,}", ...)`) instead of replacing entire paragraphs. This ensures bold, italic, and colored text remains intact.
 - **Smart Ignore Logic**: Strictly maintain the regex `/(?<![a-zA-Z0-9])[0-9]+(?![a-zA-Z0-9])/g` to avoid converting numbers embedded in English words, URLs, or emails.

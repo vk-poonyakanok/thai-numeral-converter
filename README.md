@@ -10,6 +10,11 @@
   - ลำดับรายการอัตโนมัติ (Auto-lists 1.1 -> ๑.๑)
 - **Formatting Preservation**: รักษาฟอนต์ สี และขนาดดั้งเดิมไว้ครบถ้วน
 
+## เอกสารทางกฎหมาย (Legal Documents)
+สำหรับการตรวจสอบโดย Microsoft Partner Center:
+- **Privacy Policy**: [Link](https://vk-poonyakanok.github.io/thai-numeral-converter/privacy.html)
+- **End User License Agreement (EULA)**: [Link](https://vk-poonyakanok.github.io/thai-numeral-converter/eula.html)
+
 ## วิธีการใช้งานสำหรับ MacOS (How to Use)
 
 เพื่อให้ปุ่ม **IT๙** ปรากฏในโปรแกรม Word บน Mac ให้ทำตามขั้นตอนดังนี้:
