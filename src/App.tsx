@@ -77,7 +77,7 @@ function App() {
     try {
       setStatus(null);
       setIsProcessing(true);
-      await actionFn();
+      await action();
       setStatus({ message: "ดำเนินการเรียบร้อย!", type: MessageBarType.success });
     } catch (error: any) {
       console.error(error);
